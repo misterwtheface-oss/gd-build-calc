@@ -5,21 +5,32 @@
 `misterwtheface-oss/gd-build-calc` (public, `main`, GitHub Pages from root). Cloudflare Web
 Analytics beacon active (shared github.io token). Verified serving 200 (html/js/css/icons).
 
-**P0 scaffolded and runnable (2026-09-14).** Build-first paperdoll with a mastery combo picker,
-14 gear slots, a slot-filtered item selector overlay (real sprites, rarity-coloured), a
-difficulty-aware totals table (resist penalties + 80% cap), and a damage-type cross-reference
-matrix. Data is compiled from the `_gd_extract` datamine by `build-data.mjs` (Epic + Legendary gear
-+ relics, ~2,951 items, 1,535 icons copied) with hygiene guardrails passing clean. Skills, devotion,
-affixes, sets, and the DPS sim are not built yet — they are the P1/P2 backlog.
+**Authentic game-UI reproduction (2026-09-14):** all three GD windows are now rendered from the
+game's own layout data (extracted into `_gd_extract/data/tables/ui_layout.json` by
+`build_ui_layout.py` + `build_devotion_map.py`):
+- **Paperdoll centerpiece** — real character-window geometry (14 slots at their true pixel
+  coords + silhouettes + model-viewport, over the cropped panel art), positioned as % so it scales.
+- **Skill trees** (Skills button) — per-mastery class panel: shared background + every skill node
+  at its true `bitmapPositionX/Y`, icon resolved per node (buff-chain fallback), circular transmuters.
+- **Devotion** (Devotion button) — the celestial galaxy: 5 nebulae + 110 constellation figures +
+  ~558 stars pre-composited from real galaxy coords into one pannable/zoomable JPEG (~0.8MB).
+
+**P0 (2026-09-14).** Mastery combo picker, item selector overlay (Epic + Legendary, ~2,951 items),
+difficulty-aware totals (resist penalties + 80% cap), damage-type cross-reference matrix. Data
+compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygiene passing clean.
 
 ## Backlog
 ### In progress
 - (none — P0 complete; pick the top "Next up" item)
 
 ### Next up (P1)
-- [ ] Skill trees + point budgets (level → skill/attribute/devotion points from `game_formulas`);
-      fold +skill from gear. Skill icons already in the extract.
-- [ ] Devotion constellation map (`devotion.json`) — affinities + star allocation.
+- [ ] Skill-tree **point allocation** (the authentic layout renders; add per-node ranks, level →
+      skill/attribute/devotion point budgets from `game_formulas`, fold +skill from gear) + node
+      descriptions. Skill icons + positions already shipped.
+- [ ] Devotion **allocation** (galaxy renders; add per-star ranks, affinity thresholds, celestial
+      powers). Constellation centroids + affinity already emitted in `GD_DATA.devotion`.
+- [ ] The ~26 iconless skill-tree modifier nodes (render as empty nodes now) — resolve via base-skill
+      sibling icon.
 - [ ] Affixes / components / augments on items (`affixes.json`, `components.json`, `augments.json`).
 - [ ] Sets & set bonuses (`sets.json`) — completed-set highlight, fold bonuses into totals.
 - [ ] Attributes & level allocation (Physique/Cunning/Spirit) with requirement checks.
@@ -49,3 +60,8 @@ affixes, sets, and the DPS sim are not built yet — they are the P1/P2 backlog.
   difficulty switch), and the planning artifacts. P0 flow verified locally; git initialized.
 - 2026-09-14: Deployed. Activated the Cloudflare analytics beacon, created public repo
   `misterwtheface-oss/gd-build-calc`, pushed `main`, enabled GitHub Pages (root). Live + verified.
+- 2026-09-14: Authentic game-UI reproduction. Discovered GD's UI is data-driven (`records/ui/**`),
+  added `_gd_extract/tools/build_ui_layout.py` (paperdoll + skill-tree geometry → `ui_layout.json`,
+  crops the doll panel) and `build_devotion_map.py` (composites the devotion galaxy JPEG). Rebuilt the
+  main page around the real paperdoll; added Skills (per-mastery class panel) and Devotion (pannable
+  galaxy) views. Verified each with pixel composites; all three live. Point allocation is next.
