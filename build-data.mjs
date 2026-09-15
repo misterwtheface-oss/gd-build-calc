@@ -231,6 +231,24 @@ for (const s of pdSrc.slots) {
 // every physical slot should be placed exactly once on the doll
 for (const s of SLOTS) if (!paperdoll.slots.some((p) => p.id === s.id)) errors.push(`paperdoll missing slot "${s.id}"`);
 
+// ── skill trees (from ui_layout.json) — per mastery, positioned skill nodes ──
+const stSrc = uiLayout.skilltree;
+const skilltree = {
+  canvas: { w: stSrc.canvas.w, h: stSrc.canvas.h, bg: copyIcon(stSrc.canvas.bg) },
+  button: stSrc.button,
+  classes: {},
+};
+if (!skilltree.canvas.bg) errors.push(`skill-tree bg missing: ${stSrc.canvas.bg}`);
+let stIcons = 0, stNodes = 0;
+for (const [cid, nodes] of Object.entries(stSrc.classes)) {
+  skilltree.classes[cid] = nodes.map((n) => {
+    stNodes++;
+    const icon = n.icon ? copyIcon(n.icon) : null;
+    if (icon) stIcons++;
+    return { name: n.name || null, icon, x: n.x, y: n.y, circular: !!n.circular };
+  });
+}
+
 // ── guardrails ─────────────────────────────────────────────────────────────
 const traitIndex = new Set(traits.map((t) => t.id));
 const seen = new Set();
@@ -251,6 +269,7 @@ console.log("── GD data hygiene report ────────────�
 console.log(`✓ ${items.length} items, ${masteries.length} masteries, ${traits.length} traits, ${iconCount} icons copied`);
 const byRarity = items.reduce((a, i) => ((a[i.rarity] = (a[i.rarity] || 0) + 1), a), {});
 console.log(`  rarity: ${Object.entries(byRarity).map(([k, v]) => `${k}=${v}`).join(", ")}`);
+console.log(`  paperdoll: ${paperdoll.slots.length} slots · skilltree: ${Object.keys(skilltree.classes).length} classes, ${stIcons}/${stNodes} nodes iconed`);
 if (errors.length) { console.log(`✗ ${errors.length} error(s):`); errors.slice(0, 40).forEach((e) => console.log(`    ${e}`)); if (errors.length > 40) console.log(`    …and ${errors.length - 40} more`); }
 if (warnings.length) { console.log(`⚠ ${warnings.length} warning(s):`); warnings.slice(0, 20).forEach((w) => console.log(`    ${w}`)); if (warnings.length > 20) console.log(`    …and ${warnings.length - 20} more`); }
 console.log("─".repeat(52));
@@ -258,6 +277,6 @@ console.log("─".repeat(52));
 const hard = errors.length + (STRICT ? warnings.length : 0);
 if (hard) { console.error(`BUILD FAILED: ${hard} error(s). data.js left untouched.`); process.exit(1); }
 
-const data = { masteries, items, traits, slots: SLOTS, statMeta, difficulty, paperdoll, meta: { source: "_gd_extract", subset: "Epic+Legendary", generated: "unverified extract" } };
+const data = { masteries, items, traits, slots: SLOTS, statMeta, difficulty, paperdoll, skilltree, meta: { source: "_gd_extract", subset: "Epic+Legendary", generated: "unverified extract" } };
 fs.writeFileSync(OUT, `window.${ACRONYM}_DATA = ${JSON.stringify(data)};\n`);
 console.log(`Wrote ${OUT} (window.${ACRONYM}_DATA) — ${items.length} items, ${iconCount} icons.`);

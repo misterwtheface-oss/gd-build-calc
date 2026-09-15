@@ -43,6 +43,7 @@
     build: {},                                  // { slotId: itemId | null }
     difficulty: "Normal",
     ovl: null,                                  // { slotId, pending, search } while selector open
+    skill: null,                                // { cid } while skill-tree overlay open
   };
   Object.assign(state, load());
   for (const s of DATA.slots) if (!(s.id in state.build)) state.build[s.id] = null;
@@ -235,7 +236,10 @@
     app.innerHTML = `
       <header class="app-header">
         <h1>Grim Dawn <span>Build Calculator</span></h1>
-        <button class="ghost" data-action="clear">Clear</button>
+        <div class="header-actions">
+          <button class="ghost" data-action="skills">Skills</button>
+          <button class="ghost" data-action="clear">Clear</button>
+        </div>
       </header>
       <main class="planning-main">
         ${masteryBarHTML()}
@@ -337,6 +341,52 @@
     renderApp();
   }
 
+  // ═══ SKILL TREE (#overlay-root) — authentic per-mastery class panel ═══
+  function openSkillTree(cid) {
+    const classes = Object.keys(DATA.skilltree.classes).sort();
+    const active = cid || state.masteries[0] || classes[0];
+    state.skill = { cid: active };
+    const root = document.getElementById("overlay-root");
+    const tabs = DATA.masteries.map((m) =>
+      `<button class="st-tab ${m.id === active ? "on" : ""} ${state.masteries.includes(m.id) ? "chosen" : ""}"
+         data-action="st-class" data-cid="${esc(m.id)}">${esc(m.name)}</button>`).join("");
+    root.innerHTML = `
+      <div class="overlay-panel skilltree-panel" role="dialog" aria-modal="true">
+        <div class="overlay-header st-header">
+          <div class="st-tabs">${tabs}</div>
+          <button class="overlay-close" data-action="st-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="overlay-body st-body"></div>
+        <div class="overlay-footer"><span class="st-hint muted">Real in-game skill layout. Point allocation is coming soon.</span><button data-action="st-close">Close</button></div>
+      </div>`;
+    root.classList.remove("hidden"); root.setAttribute("aria-hidden", "false");
+    renderSkillTree();
+  }
+  function renderSkillTree() {
+    const body = document.querySelector("#overlay-root .st-body");
+    if (!body || !state.skill) return;
+    const scroller = body.querySelector(".st-scroll");
+    const sx = scroller ? scroller.scrollLeft : 0, sy = scroller ? scroller.scrollTop : 0;
+    const st = DATA.skilltree, cid = state.skill.cid;
+    const nodes = st.classes[cid] || [];
+    const { w: cw, h: ch } = st.canvas, bw = st.button.w, bh = st.button.h;
+    const pct = (v, d) => (v / d * 100).toFixed(3) + "%";
+    const nodeHTML = nodes.map((n) =>
+      `<div class="st-node ${n.icon ? "" : "empty"} ${n.circular ? "circ" : ""}"
+         style="left:${pct(n.x, cw)};top:${pct(n.y, ch)};width:${pct(bw, cw)};height:${pct(bh, ch)}"
+         ${n.name ? `data-action="st-node" data-name="${esc(n.name)}"` : ""} title="${esc(n.name || "")}">
+        ${n.icon ? `<img src="assets/${esc(n.icon)}" alt="" onerror="this.style.visibility='hidden'">` : ""}</div>`).join("");
+    body.innerHTML = `<div class="st-scroll"><div class="skilltree-canvas"
+      style="aspect-ratio:${cw}/${ch};background-image:url('assets/${esc(st.canvas.bg)}')">${nodeHTML}</div></div>`;
+    const ns = body.querySelector(".st-scroll");
+    if (ns) { ns.scrollLeft = sx; ns.scrollTop = sy; }
+  }
+  function closeSkillTree() {
+    state.skill = null;
+    const root = document.getElementById("overlay-root");
+    root.classList.add("hidden"); root.setAttribute("aria-hidden", "true"); root.innerHTML = "";
+  }
+
   // ═══ DETAIL OVERLAY (#detail-overlay-root) ═══
   function openDetail(id) {
     const it = byId.get(id);
@@ -377,6 +427,7 @@
     if (!el) return;
     switch (el.dataset.action) {
       case "open-slot": openOverlay(el.dataset.slot); break;
+      case "skills": openSkillTree(); break;
       case "toggle-mastery": toggleMastery(el.dataset.id); break;
       case "set-diff": state.difficulty = el.dataset.diff; persist(); renderApp(); break;
       case "clear":
@@ -394,7 +445,7 @@
   }
   function onOverlayClick(e) {
     const el = e.target.closest("[data-action]");
-    if (!el) { if (e.target.id === "overlay-root") closeOverlay(false); return; }
+    if (!el) { if (e.target.id === "overlay-root") { state.skill ? closeSkillTree() : closeOverlay(false); } return; }
     switch (el.dataset.action) {
       case "pick": state.ovl.pending = state.ovl.pending === el.dataset.id ? null : el.dataset.id; refreshOverlay(); break;
       case "unequip": state.ovl.pending = null; closeOverlay(true); break;
@@ -402,7 +453,20 @@
       case "nav-trait": openTraitDetail(el.dataset.trait); break;
       case "cancel": closeOverlay(false); break;
       case "confirm": closeOverlay(true); break;
+      // skill tree
+      case "st-class": state.skill.cid = el.dataset.cid; renderSkillTree(); updateSkillTabs(); break;
+      case "st-node": openSkillNodeDetail(el.dataset.name); break;
+      case "st-close": closeSkillTree(); break;
     }
+  }
+  function updateSkillTabs() {
+    document.querySelectorAll("#overlay-root .st-tab").forEach((b) =>
+      b.classList.toggle("on", b.dataset.cid === state.skill.cid));
+  }
+  function openSkillNodeDetail(name) {
+    const cname = DATA.masteries.find((m) => m.id === state.skill.cid)?.name || "";
+    renderDetail(esc(name), `<div class="detail-sub muted">${esc(cname)} mastery</div>
+      <p class="muted">Skill node — full descriptions and point allocation are on the roadmap.</p>`);
   }
   function onOverlayInput(e) {
     if (!e.target.classList.contains("ovl-search")) return;
@@ -420,6 +484,7 @@
   function onKeydown(e) {
     if (e.key !== "Escape") return;
     if (!document.getElementById("detail-overlay-root").classList.contains("hidden")) return closeDetail();
+    if (state.skill) return closeSkillTree();
     if (state.ovl) closeOverlay(false);
   }
 
