@@ -174,6 +174,41 @@
     </section>`;
   }
 
+  // ── authentic paperdoll (real GD character-window geometry) ──
+  function renderPaperdoll() {
+    const pd = DATA.paperdoll;
+    if (!pd) return `<div class="build-slots">${DATA.slots.map(fallbackSlot).join("")}</div>`;
+    const { w: cw, h: ch } = pd.canvas;
+    const pct = (v, d) => (v / d * 100).toFixed(3) + "%";
+    // center 3D-model viewport: show the class combo
+    const vp = pd.viewport;
+    const label = state.masteries.length
+      ? state.masteries.map((id) => DATA.masteries.find((m) => m.id === id)?.name).filter(Boolean).join(" / ")
+      : "";
+    // the model-viewport art is already baked into the cropped canvas bg; just
+    // overlay the class-combo label in that region.
+    const viewport = vp ? `<div class="pd-viewport" style="left:${pct(vp.x, cw)};top:${pct(vp.y, ch)};width:${pct(vp.w, cw)};height:${pct(vp.h, ch)}">
+        <span class="pd-classlabel">${esc(label)}</span></div>` : "";
+    const slots = pd.slots.map((s) => {
+      const it = state.build[s.id] ? byId.get(state.build[s.id]) : null;
+      const style = `left:${pct(s.x, cw)};top:${pct(s.y, ch)};width:${pct(s.w, cw)};height:${pct(s.h, ch)}`;
+      const inner = it
+        ? `<img class="pd-item" src="assets/${esc(it.icon)}" alt="" title="${esc(it.name)}" onerror="this.style.visibility='hidden'">`
+        : (s.silhouette ? `<img class="pd-silhouette" src="assets/${esc(s.silhouette)}" alt="" onerror="this.style.display='none'">` : "");
+      return `<div class="pd-slot ${it ? "filled " + raritySlug(it.rarity) : ""}" style="${style}"
+          data-action="open-slot" data-slot="${esc(s.id)}" title="${esc(slotById.get(s.id)?.name || s.id)}">${inner}</div>`;
+    }).join("");
+    return `<div class="paperdoll-canvas" style="aspect-ratio:${cw}/${ch};background-image:url('assets/${esc(pd.canvas.bg)}')">
+      ${viewport}${slots}
+    </div>`;
+  }
+  function fallbackSlot(s) {
+    const it = state.build[s.id] ? byId.get(state.build[s.id]) : null;
+    const inner = it ? `${it.icon ? `<img src="assets/${esc(it.icon)}" alt="">` : ""}<span class="slot-name ${raritySlug(it.rarity)}">${esc(it.name)}</span>`
+      : `<img class="slot-bg" src="assets/${esc(s.art)}" alt=""><span class="slot-label">${esc(s.name)}</span>`;
+    return `<div class="slot ${it ? "filled " + raritySlug(it.rarity) : ""}" data-action="open-slot" data-slot="${esc(s.id)}">${inner}</div>`;
+  }
+
   // ── mastery picker ──
   function masteryBarHTML() {
     const chips = DATA.masteries.map((m) => {
@@ -195,14 +230,6 @@
     const prevMain = app.querySelector(".planning-main");
     const prevScroll = prevMain ? prevMain.scrollTop : 0;
 
-    const slots = DATA.slots.map((s) => {
-      const it = state.build[s.id] ? byId.get(state.build[s.id]) : null;
-      const inner = it
-        ? `${it.icon ? `<img src="assets/${esc(it.icon)}" alt="" onerror="this.style.visibility='hidden'">` : ""}<span class="slot-name ${raritySlug(it.rarity)}">${esc(it.name)}</span>`
-        : `<img class="slot-bg" src="assets/${esc(s.art)}" alt="" onerror="this.style.visibility='hidden'"><span class="slot-label">${esc(s.name)}</span>`;
-      return `<div class="slot ${it ? "filled " + raritySlug(it.rarity) : ""}" data-action="open-slot" data-slot="${esc(s.id)}" title="${esc(s.name)}">${inner}</div>`;
-    }).join("");
-
     const diffBtns = DIFFICULTIES.map((d) => `<button class="diff-btn ${state.difficulty === d ? "on" : ""}" data-action="set-diff" data-diff="${d}">${d}</button>`).join("");
 
     app.innerHTML = `
@@ -213,7 +240,7 @@
       <main class="planning-main">
         ${masteryBarHTML()}
         <section class="paperdoll">
-          <div class="build-slots">${slots}</div>
+          ${renderPaperdoll()}
         </section>
         <section class="totals">
           <div class="totals-head"><h2>Totals</h2><div class="diff-switch">${diffBtns}</div></div>

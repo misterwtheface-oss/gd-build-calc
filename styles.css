@@ -75,8 +75,36 @@ button.ghost:hover { border-color: var(--border-hi); background: rgba(201,162,39
 .mastery-chip:hover { border-color: var(--border-hi); color: var(--text); }
 .mastery-chip.on { background: rgba(201,162,39,.16); border-color: var(--border-hi); color: var(--gold); font-weight: 600; }
 
-/* paperdoll */
-.paperdoll { max-width: 760px; }
+/* paperdoll — authentic GD character-window geometry (centerpiece) */
+.paperdoll { max-width: 430px; margin: 0 auto 1.25rem; }
+.paperdoll-canvas {
+  position: relative; width: 100%; margin: 0 auto;
+  background-size: 100% 100%; background-repeat: no-repeat;
+  border-radius: 4px;
+  /* aspect-ratio + background-image are set inline from the real canvas size */
+}
+.pd-slot {
+  position: absolute; cursor: pointer; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+}
+.pd-slot:hover { box-shadow: inset 0 0 0 2px var(--border-hi); background: rgba(201,162,39,.12); }
+.pd-slot .pd-item { width: 96%; height: 96%; object-fit: contain; }
+.pd-slot .pd-silhouette { width: 74%; height: 74%; object-fit: contain; opacity: .30; }
+.pd-slot.filled.rar-legendary { box-shadow: inset 0 0 0 2px var(--rar-legendary); }
+.pd-slot.filled.rar-epic { box-shadow: inset 0 0 0 2px var(--rar-epic); }
+.pd-slot.filled.rar-rare { box-shadow: inset 0 0 0 2px var(--rar-rare); }
+.pd-slot.filled.rar-magical { box-shadow: inset 0 0 0 2px var(--rar-magical); }
+.pd-viewport {
+  position: absolute; pointer-events: none; overflow: hidden;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.pd-classlabel {
+  color: var(--gold); font-weight: 700; text-align: center;
+  padding-bottom: 10%; font-size: clamp(.7rem, 2.4vw, 1rem);
+  text-shadow: 0 1px 4px #000, 0 0 8px #000; line-height: 1.15;
+}
+
+/* fallback flat grid (only used if paperdoll layout data is missing) */
 .build-slots {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--slot-size), 1fr));
   gap: 0.6rem;

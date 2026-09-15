@@ -38,6 +38,7 @@ const masteryRaw = readJSON(path.join(TABLES, "masteries.json"));
 const manifest   = readJSON(path.join(EXTRACT_ASSETS, "asset_manifest.json"));
 const labels     = readJSON(path.join(EXTRACT, "labels.json"));
 const formulas   = readJSON(path.join(TABLES, "game_formulas.json"));
+const uiLayout   = readJSON(path.join(TABLES, "ui_layout.json"));
 
 const labelName = (field) => {
   const l = labels[field];
@@ -204,6 +205,32 @@ for (const s of SLOTS) {
   else s.art = rel;
 }
 
+// ── authentic paperdoll layout (from ui_layout.json) ───────────────────────
+// GD's internal equip-slot name → our physical slot id.
+const GD_TO_SLOT = {
+  head: "head", neck: "neck", chest: "chest", shoulders: "shoulders", hands: "hands",
+  legs: "legs", feet: "feet", waist: "waist", medal: "medal", device: "relic",
+  finger1: "ring1", finger2: "ring2", handright: "mainhand", handleft: "offhand",
+};
+const pdSrc = uiLayout.paperdoll;
+const paperdoll = {
+  canvas: { w: pdSrc.canvas.w, h: pdSrc.canvas.h, bg: copyIcon(pdSrc.canvas.bg) },
+  viewport: { ...pdSrc.viewport, art: pdSrc.viewport.art ? copyIcon(pdSrc.viewport.art) : null },
+  slots: [],
+};
+if (!paperdoll.canvas.bg) errors.push(`paperdoll canvas bg missing: ${pdSrc.canvas.bg}`);
+for (const s of pdSrc.slots) {
+  const slotId = GD_TO_SLOT[s.gdName];
+  if (!slotId) { warnings.push(`paperdoll slot "${s.gdName}" has no app mapping`); continue; }
+  paperdoll.slots.push({
+    id: slotId, gdName: s.gdName,
+    x: s.x, y: s.y, w: s.w, h: s.h,
+    silhouette: s.silhouette ? copyIcon(s.silhouette) : null,
+  });
+}
+// every physical slot should be placed exactly once on the doll
+for (const s of SLOTS) if (!paperdoll.slots.some((p) => p.id === s.id)) errors.push(`paperdoll missing slot "${s.id}"`);
+
 // ── guardrails ─────────────────────────────────────────────────────────────
 const traitIndex = new Set(traits.map((t) => t.id));
 const seen = new Set();
@@ -231,6 +258,6 @@ console.log("─".repeat(52));
 const hard = errors.length + (STRICT ? warnings.length : 0);
 if (hard) { console.error(`BUILD FAILED: ${hard} error(s). data.js left untouched.`); process.exit(1); }
 
-const data = { masteries, items, traits, slots: SLOTS, statMeta, difficulty, meta: { source: "_gd_extract", subset: "Epic+Legendary", generated: "unverified extract" } };
+const data = { masteries, items, traits, slots: SLOTS, statMeta, difficulty, paperdoll, meta: { source: "_gd_extract", subset: "Epic+Legendary", generated: "unverified extract" } };
 fs.writeFileSync(OUT, `window.${ACRONYM}_DATA = ${JSON.stringify(data)};\n`);
 console.log(`Wrote ${OUT} (window.${ACRONYM}_DATA) — ${items.length} items, ${iconCount} icons.`);
