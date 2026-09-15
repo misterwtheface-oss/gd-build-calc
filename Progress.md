@@ -40,7 +40,7 @@ affixes, sets, and the DPS sim are not built yet — they are the P1/P2 backlog.
 - Off-hand slot accepts caster off-hands + shields but does not yet enforce main-hand compatibility
   (2H should disable off-hand; dual-wield rules). Deferred to P1.
 - `ring2` shares the `ring` pool with `ring1` (correct); no per-slot uniqueness rule yet.
-- Analytics beacon in `index.html` is intentionally commented out (enable only at public release).
+- Analytics beacon in `index.html` is ACTIVE (enabled at public release; shared github.io token).
 
 ## Session log
 - 2026-09-14: Scaffolded the project via build-calc-planner. Wrote `build-data.mjs` (extract → lean
