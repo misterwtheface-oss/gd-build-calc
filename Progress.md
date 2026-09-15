@@ -1,6 +1,10 @@
 # Grim Dawn Build Calculator — Progress
 
 ## Current state
+**LIVE (2026-09-14):** https://misterwtheface-oss.github.io/gd-build-calc/ — repo
+`misterwtheface-oss/gd-build-calc` (public, `main`, GitHub Pages from root). Cloudflare Web
+Analytics beacon active (shared github.io token). Verified serving 200 (html/js/css/icons).
+
 **P0 scaffolded and runnable (2026-09-14).** Build-first paperdoll with a mastery combo picker,
 14 gear slots, a slot-filtered item selector overlay (real sprites, rarity-coloured), a
 difficulty-aware totals table (resist penalties + 80% cap), and a damage-type cross-reference
@@ -43,3 +47,5 @@ affixes, sets, and the DPS sim are not built yet — they are the P1/P2 backlog.
   `window.GD_DATA`, damage-type trait derivation, difficulty penalties, icon copy, hygiene), adapted
   the skeleton (GD palette: dark iron + gold + blood-red; rarity colours; paperdoll; mastery picker;
   difficulty switch), and the planning artifacts. P0 flow verified locally; git initialized.
+- 2026-09-14: Deployed. Activated the Cloudflare analytics beacon, created public repo
+  `misterwtheface-oss/gd-build-calc`, pushed `main`, enabled GitHub Pages (root). Live + verified.
