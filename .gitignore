@@ -1,0 +1,20 @@
+# --- Grim Dawn Build Calculator ---
+# Rule of thumb: if the SPA doesn't load it at runtime, it doesn't belong here.
+
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# The datamine workspace lives as a SIBLING (../_gd_extract) and is NEVER committed
+# here — build-data.mjs reads it by relative path at build time and copies only the
+# shipped subset (data.js + the icons actually used) into the repo. If it's ever
+# nested, ignore it:
+# _*_extract/
+
+# raw / intermediate data that is not the shipped subset
+data/_raw/
+assets/_full_export/
+
+# NOTE: data.js IS committed on purpose — GitHub Pages serves it directly.
+# assets/ (the copied item sprites + paperdoll art) IS committed — the SPA loads it.
