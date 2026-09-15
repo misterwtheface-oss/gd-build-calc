@@ -76,7 +76,7 @@ button.ghost:hover { border-color: var(--border-hi); background: rgba(201,162,39
 .mastery-chip.on { background: rgba(201,162,39,.16); border-color: var(--border-hi); color: var(--gold); font-weight: 600; }
 
 /* paperdoll — authentic GD character-window geometry (centerpiece) */
-.paperdoll { max-width: 430px; margin: 0 auto 1.25rem; }
+.paperdoll { max-width: 468px; margin: 0 auto 1.25rem; }
 .paperdoll-canvas {
   position: relative; width: 100%; margin: 0 auto;
   background-size: 100% 100%; background-repeat: no-repeat;
