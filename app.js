@@ -44,6 +44,7 @@
     difficulty: "Normal",
     ovl: null,                                  // { slotId, pending, search } while selector open
     skill: null,                                // { cid } while skill-tree overlay open
+    devo: null,                                 // { z } while devotion overlay open
   };
   Object.assign(state, load());
   for (const s of DATA.slots) if (!(s.id in state.build)) state.build[s.id] = null;
@@ -238,6 +239,7 @@
         <h1>Grim Dawn <span>Build Calculator</span></h1>
         <div class="header-actions">
           <button class="ghost" data-action="skills">Skills</button>
+          <button class="ghost" data-action="devotion">Devotion</button>
           <button class="ghost" data-action="clear">Clear</button>
         </div>
       </header>
@@ -387,6 +389,73 @@
     root.classList.add("hidden"); root.setAttribute("aria-hidden", "true"); root.innerHTML = "";
   }
 
+  // ═══ DEVOTION galaxy (#overlay-root) — pannable/zoomable star map ═══
+  const ZOOMS = [1, 1.6, 2.4, 3.2];
+  function openDevotion() {
+    const dv = DATA.devotion;
+    if (!dv) return;
+    state.devo = { z: 0 };
+    const root = document.getElementById("overlay-root");
+    root.innerHTML = `
+      <div class="overlay-panel devo-panel" role="dialog" aria-modal="true">
+        <div class="overlay-header">
+          <h2>Devotion — Celestial Constellations</h2>
+          <div class="devo-zoom">
+            <button data-action="devo-zoom" data-d="-1" aria-label="Zoom out">−</button>
+            <button data-action="devo-zoom" data-d="0">Fit</button>
+            <button data-action="devo-zoom" data-d="1" aria-label="Zoom in">+</button>
+          </div>
+          <button class="overlay-close" data-action="devo-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="overlay-body devo-body">
+          <div class="devo-scroll">
+            <img class="devo-img" style="--z:1" src="assets/${esc(dv.canvas.image)}" alt="Devotion constellation map"
+                 width="${dv.canvas.w}" height="${dv.canvas.h}">
+          </div>
+        </div>
+        <div class="overlay-footer"><span class="st-hint muted">${dv.constellations.length} constellations across 5 affinities. Drag to pan; allocation is on the roadmap.</span><button data-action="devo-close">Close</button></div>
+      </div>`;
+    root.classList.remove("hidden"); root.setAttribute("aria-hidden", "false");
+    enableDragPan(root.querySelector(".devo-scroll"));
+  }
+  // mouse drag-to-pan (touch devices scroll natively)
+  function enableDragPan(el) {
+    if (!el) return;
+    let down = false, sx = 0, sy = 0, l = 0, t = 0;
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "mouse") return;
+      down = true; sx = e.clientX; sy = e.clientY; l = el.scrollLeft; t = el.scrollTop;
+      el.setPointerCapture(e.pointerId); el.classList.add("grabbing");
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!down) return;
+      el.scrollLeft = l - (e.clientX - sx); el.scrollTop = t - (e.clientY - sy);
+    });
+    const end = () => { down = false; el.classList.remove("grabbing"); };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+  }
+  function devoZoom(d) {
+    if (!state.devo) return;
+    const scroll = document.querySelector("#overlay-root .devo-scroll");
+    const img = document.querySelector("#overlay-root .devo-img");
+    if (!scroll || !img) return;
+    // keep the viewport centre stable across zoom
+    const cx = (scroll.scrollLeft + scroll.clientWidth / 2) / (scroll.scrollWidth || 1);
+    const cy = (scroll.scrollTop + scroll.clientHeight / 2) / (scroll.scrollHeight || 1);
+    state.devo.z = d === 0 ? 0 : Math.max(0, Math.min(ZOOMS.length - 1, state.devo.z + d));
+    img.style.setProperty("--z", ZOOMS[state.devo.z]);
+    requestAnimationFrame(() => {
+      scroll.scrollLeft = cx * scroll.scrollWidth - scroll.clientWidth / 2;
+      scroll.scrollTop = cy * scroll.scrollHeight - scroll.clientHeight / 2;
+    });
+  }
+  function closeDevotion() {
+    state.devo = null;
+    const root = document.getElementById("overlay-root");
+    root.classList.add("hidden"); root.setAttribute("aria-hidden", "true"); root.innerHTML = "";
+  }
+
   // ═══ DETAIL OVERLAY (#detail-overlay-root) ═══
   function openDetail(id) {
     const it = byId.get(id);
@@ -428,6 +497,7 @@
     switch (el.dataset.action) {
       case "open-slot": openOverlay(el.dataset.slot); break;
       case "skills": openSkillTree(); break;
+      case "devotion": openDevotion(); break;
       case "toggle-mastery": toggleMastery(el.dataset.id); break;
       case "set-diff": state.difficulty = el.dataset.diff; persist(); renderApp(); break;
       case "clear":
@@ -445,7 +515,7 @@
   }
   function onOverlayClick(e) {
     const el = e.target.closest("[data-action]");
-    if (!el) { if (e.target.id === "overlay-root") { state.skill ? closeSkillTree() : closeOverlay(false); } return; }
+    if (!el) { if (e.target.id === "overlay-root") { state.devo ? closeDevotion() : state.skill ? closeSkillTree() : closeOverlay(false); } return; }
     switch (el.dataset.action) {
       case "pick": state.ovl.pending = state.ovl.pending === el.dataset.id ? null : el.dataset.id; refreshOverlay(); break;
       case "unequip": state.ovl.pending = null; closeOverlay(true); break;
@@ -457,6 +527,9 @@
       case "st-class": state.skill.cid = el.dataset.cid; renderSkillTree(); updateSkillTabs(); break;
       case "st-node": openSkillNodeDetail(el.dataset.name); break;
       case "st-close": closeSkillTree(); break;
+      // devotion
+      case "devo-zoom": devoZoom(Number(el.dataset.d)); break;
+      case "devo-close": closeDevotion(); break;
     }
   }
   function updateSkillTabs() {
@@ -484,6 +557,7 @@
   function onKeydown(e) {
     if (e.key !== "Escape") return;
     if (!document.getElementById("detail-overlay-root").classList.contains("hidden")) return closeDetail();
+    if (state.devo) return closeDevotion();
     if (state.skill) return closeSkillTree();
     if (state.ovl) closeOverlay(false);
   }

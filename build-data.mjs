@@ -249,6 +249,14 @@ for (const [cid, nodes] of Object.entries(stSrc.classes)) {
   });
 }
 
+// ── devotion galaxy (pre-composed single image + constellation meta) ────────
+const dvSrc = uiLayout.devotion;
+const devotion = {
+  canvas: { w: dvSrc.canvas.w, h: dvSrc.canvas.h, image: copyIcon(dvSrc.canvas.image) },
+  constellations: dvSrc.constellations,
+};
+if (!devotion.canvas.image) errors.push(`devotion galaxy image missing: ${dvSrc.canvas.image}`);
+
 // ── guardrails ─────────────────────────────────────────────────────────────
 const traitIndex = new Set(traits.map((t) => t.id));
 const seen = new Set();
@@ -269,7 +277,7 @@ console.log("── GD data hygiene report ────────────�
 console.log(`✓ ${items.length} items, ${masteries.length} masteries, ${traits.length} traits, ${iconCount} icons copied`);
 const byRarity = items.reduce((a, i) => ((a[i.rarity] = (a[i.rarity] || 0) + 1), a), {});
 console.log(`  rarity: ${Object.entries(byRarity).map(([k, v]) => `${k}=${v}`).join(", ")}`);
-console.log(`  paperdoll: ${paperdoll.slots.length} slots · skilltree: ${Object.keys(skilltree.classes).length} classes, ${stIcons}/${stNodes} nodes iconed`);
+console.log(`  paperdoll: ${paperdoll.slots.length} slots · skilltree: ${Object.keys(skilltree.classes).length} classes, ${stIcons}/${stNodes} nodes iconed · devotion: ${devotion.constellations.length} constellations`);
 if (errors.length) { console.log(`✗ ${errors.length} error(s):`); errors.slice(0, 40).forEach((e) => console.log(`    ${e}`)); if (errors.length > 40) console.log(`    …and ${errors.length - 40} more`); }
 if (warnings.length) { console.log(`⚠ ${warnings.length} warning(s):`); warnings.slice(0, 20).forEach((w) => console.log(`    ${w}`)); if (warnings.length > 20) console.log(`    …and ${warnings.length - 20} more`); }
 console.log("─".repeat(52));
@@ -277,6 +285,6 @@ console.log("─".repeat(52));
 const hard = errors.length + (STRICT ? warnings.length : 0);
 if (hard) { console.error(`BUILD FAILED: ${hard} error(s). data.js left untouched.`); process.exit(1); }
 
-const data = { masteries, items, traits, slots: SLOTS, statMeta, difficulty, paperdoll, skilltree, meta: { source: "_gd_extract", subset: "Epic+Legendary", generated: "unverified extract" } };
+const data = { masteries, items, traits, slots: SLOTS, statMeta, difficulty, paperdoll, skilltree, devotion, meta: { source: "_gd_extract", subset: "Epic+Legendary", generated: "unverified extract" } };
 fs.writeFileSync(OUT, `window.${ACRONYM}_DATA = ${JSON.stringify(data)};\n`);
 console.log(`Wrote ${OUT} (window.${ACRONYM}_DATA) — ${items.length} items, ${iconCount} icons.`);
