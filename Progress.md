@@ -24,6 +24,17 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
 - (none — P0 complete; pick the top "Next up" item)
 
 ### Next up (P1)
+- [ ] **Class nameplate in the paperdoll center** (fill the empty model-viewport). Render a live
+      class title that updates as masteries are picked: 0 picked → "choose masteries" prompt; 1 →
+      the mastery name; 2 → the combined class name (e.g. Soldier+Demolitionist = *Commando*).
+      Data ready in the extract: all **36 dual-class combo names** = `tagSkillClassName0<a><b>` (a,b =
+      the two mastery digits 01-09; e.g. 0102=Commando, 0103=Witchblade, 0104=Blademaster, 0109=Warlord),
+      plus per-class **colour-coded name banners** `ui/skills/skillallocation/skills_class0Ntrainingbuttonup.png`
+      (197×41) usable as the nameplate backdrop, and the class-selection bg (983×605).
+      NOTE: GD has **no class emblems/portraits and no dual-class art** — identity is name+colour only,
+      so this is typographic/banner-based, not an emblem. To build: emit combo-name map + banner art
+      into `GD_DATA`, render into `.pd-viewport`. Open Q: keep the mastery chip row above the doll, or
+      move the picker into the center itself (asked, not yet decided).
 - [ ] Skill-tree **point allocation** (the authentic layout renders; add per-node ranks, level →
       skill/attribute/devotion point budgets from `game_formulas`, fold +skill from gear) + node
       descriptions. Skill icons + positions already shipped.
@@ -42,6 +53,18 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
 - [ ] Pets panel (`pets.json`).
 - [ ] Conversion / flat→% damage interplay; skill modifier interactions.
 - [ ] Appendix / detail pages; component & augment suggestions by damage type.
+
+### Parked (big / gated)
+- [ ] **3D character wearing equipped gear** (fill the model viewport with the actual character).
+      PARKED — data exists (each item's `armorMale/FemaleMesh` `.msh` + `baseTexture`/`bumpTexture` +
+      `hideFeet/Legs/Shoulders/Hands` layering flags; base player body `creatures/pc/*.msh` + anims),
+      but GD's `.msh` is a **custom format (`MSH\x03`) with NO exporter** — `ModelCompiler.exe` only
+      compiles *to* .msh. Rendering (live OR pre-rendered static PNGs) requires reverse-engineering
+      MSH v3 + a render rig (skeleton/pose/camera/textures) + per-item worn-render batch — a dedicated
+      multi-session effort. Static-PNG approach does NOT dodge the cost (mesh RE + render rig is the
+      hard part). Note: the inventory icons we already ship ARE static renders of each item *in
+      isolation*; GD ships no *worn-on-body* renders. Viable first step if revisited: attempt to parse
+      MSH v3 (community Blender importers exist) and render base body + one chest piece as a PoC.
 
 ## Known issues / warnings
 - Data is an **unverified extract** — numbers are provisional until checked against in-game values.
@@ -65,3 +88,6 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
   crops the doll panel) and `build_devotion_map.py` (composites the devotion galaxy JPEG). Rebuilt the
   main page around the real paperdoll; added Skills (per-mastery class panel) and Devotion (pannable
   galaxy) views. Verified each with pixel composites; all three live. Point allocation is next.
+- 2026-09-14: Fixed paperdoll bottom-frame clipping (crop 430→447) + enlarged doll (468px). Explored
+  filling the model viewport: 3D character render PARKED (MSH format has no exporter — see Parked).
+  Class-nameplate-in-center scoped instead (36 combo names + banner art available) — added to P1.
