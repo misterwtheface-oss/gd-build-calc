@@ -36,6 +36,17 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
   no-requirement constellations are reachable at 0 affinity; Bat etc. correctly lock).
 - **Totals integration.** New **Talents** column folds in mastery-bar attributes + allocated skill
   (flat scaling at current rank) + devotion (flat grants) for any field in the totals whitelist.
+- **Authentic class-selection screen + per-class art (2026-09-15, LIVE).** Picking a mastery now opens
+  the real GD class-selection screen: the `skills_classselectionbackgroundimage` backdrop, a column of
+  nameplate buttons (the game ships only TWO plate skins — `skills_buttonclassselectionup01/02` — reused
+  alternately, NOT one per class; matched that), and a preview pane with the per-class **644×460
+  illustration** (`skills_classselectedimage0N`, index N = mastery id, verified Soldier=01…Oathkeeper=09)
+  + mastery description + Choose button. Each class's skill tree gets **its own art** as a darkened
+  backdrop behind the (still shared, pixel-calibrated) stone node canvas + a rail hero image, so trees
+  read as per-class. KEY finding: GD uses ONE shared node-grid backdrop for all classes
+  (`classpanelbackgroundimage` all point to `skills_classbackgroundimage.tex`) — per-class identity is
+  the selection art, not the grid. `build-data.mjs` emits `skilltree.classSelectBg`, `bannerArt[2]`,
+  and per-class `art`/`desc`; 12 new PNGs ship under `assets/ui/skills/classselection/`.
 - **Extract-side additions** (`_gd_extract`): `build_progression.py` → `progression.json` (max level
   100, 55 devotion, per-level skill points [Σ=238], `skillMasteryTierLevel=[1,5,10,15,20,25,32,40,50]`,
   mastery-bar max 50, 36 dual-class combo names). `build_devotion_map.py` now also emits per-star
@@ -44,12 +55,20 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
   modifier→base prereqs (stem + spatial fallback, **124/124 resolved**); joins `devotion.json`
   (affinity req/given, links, star grants) → starPos. Verified end-to-end via a jsdom smoke harness
   (29 checks: allocation, tier gating, budgets, cascade, totals, persistence).
+- **DEPLOYED (2026-09-15).** All of P1 (calculators + class-selection screen) is pushed to `main` and
+  LIVE at the GitHub Pages URL; verified the CDN serves the new `data.js` (2,082,479 B), `app.js`, and
+  class art. data.js grew 1.37→2.08 MB. Not yet reviewed on a real phone (LAN preview was blocked by a
+  phone-side filter / router client-isolation — PC firewall was confirmed open, so we shipped instead).
 
 ## Backlog
 ### In progress
 - (none — P1 talent + devotion calculators complete; pick the top "Next up" item)
 
 ### Next up (P1)
+- [ ] **Mobile review of the new UI** (unverified on a real phone): class-selection screen is a
+      two-column layout (banner list + art preview) — stack it vertically under a breakpoint if cramped;
+      check skill-node + devotion-star tap-target sizes; touch has no right-click/Shift for rank-DOWN,
+      so add a −/＋ stepper (e.g. in the node detail) for touch.
 - [ ] The ~26 iconless skill-tree modifier nodes (render with a letter fallback now) — resolve via
       base-skill sibling icon.
 - [ ] Attribute-point allocation (Physique/Cunning/Spirit; `attributePointsPerLevel`=1, +8/pt) —
@@ -112,4 +131,13 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
   App: rewrote `app.js` — mastery chips REPLACED by the skill tree as class picker; mastery-bar
   control + tier-gated rank allocation; clickable devotion stars with affinity accrual/thresholds +
   cascade removal; character-level→budget; Talents column in totals. data.js 1.37→2.08MB. Verified
-  with a jsdom harness (29 checks, all pass). NOT yet pushed to GitHub — awaiting local visual review.
+  with a jsdom harness (29 checks, all pass).
+- 2026-09-15: **Class-selection screen + per-class art, then DEPLOYED.** Added the authentic
+  class-selection screen (backdrop + nameplate buttons + per-class 644×460 illustration + description +
+  Choose), per-class tree backdrop + rail hero. Found GD ships only 2 generic nameplate skins (not per
+  class) and uses one shared node-grid backdrop for all classes — so per-class identity = the selection
+  art. `build-data.mjs` now emits `classSelectBg`/`bannerArt[2]`/per-class `art`+`desc`; 12 new PNGs.
+  Re-verified via jsdom (20/20). Tried LAN preview for mobile (`tools/serve.mjs`) — phone was blocked;
+  audited the firewall and confirmed it was OPEN (8080 Allow Any + Node allow on Public), so the block
+  was phone-side (VPN/Private-Relay/DNS) or router client-isolation. Per user, pushed to `main` and
+  deployed to GitHub Pages instead; verified the live CDN serves the new build. Server stopped.
