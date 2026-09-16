@@ -19,29 +19,43 @@ game's own layout data (extracted into `_gd_extract/data/tables/ui_layout.json` 
 difficulty-aware totals (resist penalties + 80% cap), damage-type cross-reference matrix. Data
 compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygiene passing clean.
 
+**P1 — TALENT + DEVOTION POINT CALCULATORS (2026-09-15).** Both trees are now real point calculators:
+- **Skill tree = the class picker** (replaced the old mastery chips). Header shows a Class & Points
+  panel: character-level input (drives budgets), combo class name (36 dual-class names), and
+  Skill/Devotion budget buttons. The overlay: two mastery SLOTS (pick a mastery from a 9-class grid →
+  costs 1 pt, mastery level 1), a **50-segment mastery-bar control** with tier markers (invest points
+  → raises mastery level → unlocks tier-gated skills), and the authentic node canvas where each node
+  shows a **rank badge (x/max)**, dims+locks when its tier or base-skill prereq isn't met, and glows
+  gold/green when allocated/maxed. Click = +1, right-click / Shift-click = −1, double-click = detail
+  (per-rank scaling table + description). Budget counter turns red on overspend.
+- **Devotion = a real star calculator.** Every star is a clickable hit-target on the galaxy image at
+  its true pixel centre. Clicking allocates (gated by affinity thresholds + link order), clicking an
+  allocated star removes it and **cascades** (dependents + affinity-loss). Affinity bar (5 colours)
+  tracks accrual; a side panel shows the selected constellation's requirement/grant/stars/celestial
+  powers. 55-point budget. Crossroads seed affinity exactly as in-game (verified: only the 6
+  no-requirement constellations are reachable at 0 affinity; Bat etc. correctly lock).
+- **Totals integration.** New **Talents** column folds in mastery-bar attributes + allocated skill
+  (flat scaling at current rank) + devotion (flat grants) for any field in the totals whitelist.
+- **Extract-side additions** (`_gd_extract`): `build_progression.py` → `progression.json` (max level
+  100, 55 devotion, per-level skill points [Σ=238], `skillMasteryTierLevel=[1,5,10,15,20,25,32,40,50]`,
+  mastery-bar max 50, 36 dual-class combo names). `build_devotion_map.py` now also emits per-star
+  pixel centres (`ui_layout.devotion.starPos`, 558/559 joined). `build-data.mjs` joins ui_layout →
+  `skills.json` (maxLevel/ultimateLevel/tier/desc + label-driven per-rank `scaling`) and derives
+  modifier→base prereqs (stem + spatial fallback, **124/124 resolved**); joins `devotion.json`
+  (affinity req/given, links, star grants) → starPos. Verified end-to-end via a jsdom smoke harness
+  (29 checks: allocation, tier gating, budgets, cascade, totals, persistence).
+
 ## Backlog
 ### In progress
-- (none — P0 complete; pick the top "Next up" item)
+- (none — P1 talent + devotion calculators complete; pick the top "Next up" item)
 
 ### Next up (P1)
-- [ ] **Class nameplate in the paperdoll center** (fill the empty model-viewport). Render a live
-      class title that updates as masteries are picked: 0 picked → "choose masteries" prompt; 1 →
-      the mastery name; 2 → the combined class name (e.g. Soldier+Demolitionist = *Commando*).
-      Data ready in the extract: all **36 dual-class combo names** = `tagSkillClassName0<a><b>` (a,b =
-      the two mastery digits 01-09; e.g. 0102=Commando, 0103=Witchblade, 0104=Blademaster, 0109=Warlord),
-      plus per-class **colour-coded name banners** `ui/skills/skillallocation/skills_class0Ntrainingbuttonup.png`
-      (197×41) usable as the nameplate backdrop, and the class-selection bg (983×605).
-      NOTE: GD has **no class emblems/portraits and no dual-class art** — identity is name+colour only,
-      so this is typographic/banner-based, not an emblem. To build: emit combo-name map + banner art
-      into `GD_DATA`, render into `.pd-viewport`. Open Q: keep the mastery chip row above the doll, or
-      move the picker into the center itself (asked, not yet decided).
-- [ ] Skill-tree **point allocation** (the authentic layout renders; add per-node ranks, level →
-      skill/attribute/devotion point budgets from `game_formulas`, fold +skill from gear) + node
-      descriptions. Skill icons + positions already shipped.
-- [ ] Devotion **allocation** (galaxy renders; add per-star ranks, affinity thresholds, celestial
-      powers). Constellation centroids + affinity already emitted in `GD_DATA.devotion`.
-- [ ] The ~26 iconless skill-tree modifier nodes (render as empty nodes now) — resolve via base-skill
-      sibling icon.
+- [ ] The ~26 iconless skill-tree modifier nodes (render with a letter fallback now) — resolve via
+      base-skill sibling icon.
+- [ ] Attribute-point allocation (Physique/Cunning/Spirit; `attributePointsPerLevel`=1, +8/pt) —
+      steppers + requirement checks; fold into totals.
+- [ ] Expand Talents totals: %-damage / OA-DA / skill-conditional bonuses (currently flat-only).
+- [ ] Celestial-power NAMES/details on devotion stars (currently a ✦ flag; resolve the proc skill).
 - [ ] Affixes / components / augments on items (`affixes.json`, `components.json`, `augments.json`).
 - [ ] Sets & set bonuses (`sets.json`) — completed-set highlight, fold bonuses into totals.
 - [ ] Attributes & level allocation (Physique/Cunning/Spirit) with requirement checks.
@@ -91,3 +105,11 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
 - 2026-09-14: Fixed paperdoll bottom-frame clipping (crop 430→447) + enlarged doll (468px). Explored
   filling the model viewport: 3D character render PARKED (MSH format has no exporter — see Parked).
   Class-nameplate-in-center scoped instead (36 combo names + banner art available) — added to P1.
+- 2026-09-15: **Talent + devotion POINT CALCULATORS shipped.** Extract: added `build_progression.py`
+  (progression.json: budgets, tier gates, combo names), extended `build_devotion_map.py` (per-star
+  pixel centres). Pipeline: `build-data.mjs` now joins ui_layout→skills.json (caps/tier/desc/label
+  scaling) with a 124/124 modifier→base prereq resolver (stem+spatial), and devotion.json→starPos.
+  App: rewrote `app.js` — mastery chips REPLACED by the skill tree as class picker; mastery-bar
+  control + tier-gated rank allocation; clickable devotion stars with affinity accrual/thresholds +
+  cascade removal; character-level→budget; Talents column in totals. data.js 1.37→2.08MB. Verified
+  with a jsdom harness (29 checks, all pass). NOT yet pushed to GitHub — awaiting local visual review.
