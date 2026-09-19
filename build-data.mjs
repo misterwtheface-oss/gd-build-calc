@@ -277,6 +277,8 @@ function famStem(skPath) {
 
 const skilltree = {
   canvas: { w: stSrc.canvas.w, h: stSrc.canvas.h, bg: copyIcon(stSrc.canvas.bg) },
+  // per-class mastery art (paneArt) is drawn at (0,0), native 640×605, over the 983×605 pane
+  paneArtBox: { x: 0, y: 0, w: 640, h: 605 },
   button: stSrc.button,
   tierLevels: progression.skillMasteryTierLevel,   // [1,5,10,15,20,25,32,40,50]
   masteryMax: progression.masteryBarMax,           // 50
@@ -308,14 +310,20 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
     if (Array.isArray(ms[f])) barAttr[f] = ms[f].slice(0, barMax).map(N);
 
   // per-class art (index N = mastery id N; verified Soldier=01 … Oathkeeper=09)
+  //  · art      = the framed class-SELECTION portrait (classselection/skills_classselectedimage) — used on the picker screen
+  //  · paneArt  = the skill-ALLOCATION mastery image (skillallocation/skills_classimage) that the game draws behind the
+  //               skill nodes. 640×605 over the 983×605 pane, at (0,0): opaque on the left, alpha-fades to 0 on the right
+  //               so nodes read cleanly. This is skillPaneMasteryBitmap in records/ui/skills/classNN/classtable.dbr.
   const art = copyIcon(`ui/skills/classselection/skills_classselectedimage${cid}.png`);
   if (!art) warnings.push(`class ${cid} art missing`);
+  const paneArt = copyIcon(`ui/skills/skillallocation/skills_classimage${cid}.png`);
+  if (!paneArt) warnings.push(`class ${cid} pane art missing`);
   const classDesc = (skillsRaw[mastery.path] || {}).desc || null;
 
   skilltree.classes[cid] = {
     id: cid,
     name: mastery.name || `Class ${cid}`,
-    art, desc: classDesc,
+    art, paneArt, desc: classDesc,
     bar: { attr: barAttr },
     nodes: enriched.map((e) => {
       const { n, rec, mod } = e;

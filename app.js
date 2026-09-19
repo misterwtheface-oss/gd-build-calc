@@ -464,7 +464,10 @@
       <div class="overlay-panel skilltree-panel" role="dialog" aria-modal="true">
         <div class="overlay-header st-header">
           <div class="st-tabs"></div>
-          <button class="overlay-close" data-action="st-close" aria-label="Close">&times;</button>
+          <div class="st-header-right">
+            <span class="st-header-confirm"></span>
+            <button class="overlay-close" data-action="st-close" aria-label="Close">&times;</button>
+          </div>
         </div>
         <div class="st-layout">
           <aside class="st-rail"></aside>
@@ -499,13 +502,15 @@
     const rail = panel.querySelector(".st-rail");
     const cid = state.skill.cid;
 
+    const headerConfirm = panel.querySelector(".st-header-confirm");
+
     // class-selection mode (empty slot) — authentic class-selection screen
     if (String(cid).startsWith("__pick__")) {
+      panel.classList.add("mode-pick");
       const classes = Object.values(ST.classes).sort((a, b) => a.id.localeCompare(b.id));
       const chosen = new Set(state.masteries);
+      const hasSel = !!ST.classes[state.skill.pickSel];
       const sel = ST.classes[state.skill.pickSel] || classes.find((c) => !chosen.has(c.id)) || classes[0];
-      rail.innerHTML = `<div class="st-rail-head">Choose a Mastery</div>
-        <p class="muted st-rail-note">Selecting a mastery spends 1 skill point to reach mastery level 1. Combine two masteries to form a class.</p>`;
       const plates = ST.bannerArt || [];
       const banners = classes.map((c, i) => {
         const taken = chosen.has(c.id);
@@ -516,22 +521,25 @@
           <span class="st-banner-name">${esc(c.name)}</span>${taken ? `<span class="st-banner-tag">✓</span>` : ""}</button>`;
       }).join("");
       const taken = sel && chosen.has(sel.id);
-      body.innerHTML = `<div class="st-select" ${ST.classSelectBg ? `style="background-image:url('assets/${esc(ST.classSelectBg)}')"` : ""}>
+      body.innerHTML = `<div class="st-select ${hasSel ? "has-sel" : ""}" ${ST.classSelectBg ? `style="background-image:url('assets/${esc(ST.classSelectBg)}')"` : ""}>
         <div class="st-select-list">${banners}</div>
         <div class="st-select-preview">
           ${sel && sel.art ? `<img class="st-select-art" src="assets/${esc(sel.art)}" alt="${esc(sel.name)}">` : ""}
           <div class="st-select-body">
             <h2 class="st-select-name">${esc(sel ? sel.name : "")}</h2>
             ${sel && sel.desc ? `<p class="st-select-desc">${esc(sel.desc)}</p>` : ""}
-            <button class="st-select-confirm" data-action="st-choose" data-cid="${esc(sel ? sel.id : "")}" ${taken ? "disabled" : ""}>
-              ${taken ? "Already chosen" : `Choose ${esc(sel ? sel.name : "")}`}</button>
           </div>
         </div>
       </div>`;
-      panel.querySelector(".st-hint").textContent = "Pick a mastery to view its class art, then confirm.";
+      // confirmation lives next to the close button in the header
+      headerConfirm.innerHTML = `<button class="st-select-confirm" data-action="st-choose" data-cid="${esc(sel ? sel.id : "")}" ${taken ? "disabled" : ""}>
+        ${taken ? "Already chosen" : `Choose ${esc(sel ? sel.name : "")}`}</button>`;
+      if (panel.querySelector(".st-hint")) panel.querySelector(".st-hint").textContent = "";
       return;
     }
 
+    panel.classList.remove("mode-pick");
+    headerConfirm.innerHTML = "";
     rail.innerHTML = masteryRailHTML(cid);
     renderTreeCanvas(body, cid);
     panel.querySelector(".st-hint").textContent = "Click a node to add a rank · right-click (or Shift-click) to remove.";
@@ -564,7 +572,23 @@
     const cls = ST.classes[cid];
     const { w: cw, h: ch } = ST.canvas, bw = ST.button.w, bh = ST.button.h;
     const pct = (v, d) => (v / d * 100).toFixed(3) + "%";
-    const nodeHTML = cls.nodes.filter((n) => n.name).map((n) => {
+    const named = cls.nodes.filter((n) => n.name);
+    const bySkill = new Map(named.map((n) => [n.skill, n]));
+
+    // connectors: a modifier skill is drawn wired to the base skill it requires.
+    // The line lights up (gold) once the prerequisite point is invested AND the
+    // mastery tier is unlocked — making the allocation gating visible.
+    const ccx = (n) => n.x + bw / 2, ccy = (n) => n.y + bh / 2;
+    const links = named.filter((n) => n.requires && bySkill.has(n.requires)).map((n) => {
+      const p = bySkill.get(n.requires);
+      const on = (state.skills[n.requires] > 0) && tierUnlocked(cid, n.tier);
+      return `<line class="st-link ${on ? "on" : ""}" x1="${ccx(p)}" y1="${ccy(p)}" x2="${ccx(n)}" y2="${ccy(n)}" vector-effect="non-scaling-stroke" />`;
+    }).join("");
+    const linksSVG = links
+      ? `<svg class="st-links" viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" aria-hidden="true">${links}</svg>`
+      : "";
+
+    const nodeHTML = named.map((n) => {
       const rank = state.skills[n.skill] || 0;
       const unlocked = tierUnlocked(cid, n.tier) && (!n.requires || (state.skills[n.requires] > 0));
       const maxed = rank >= n.maxLevel;
@@ -575,9 +599,15 @@
         ${n.icon ? `<img src="assets/${esc(n.icon)}" alt="" onerror="this.style.visibility='hidden'">` : `<span class="st-noicon">${esc(n.name[0])}</span>`}
         ${badge}</div>`;
     }).join("");
-    const artBg = cls.art ? `--class-art:url('assets/${esc(cls.art)}')` : "";
-    body.innerHTML = `<div class="st-scroll ${cls.art ? "has-art" : ""}" style="${artBg}"><div class="skilltree-canvas"
-      style="aspect-ratio:${cw}/${ch};background-image:url('assets/${esc(ST.canvas.bg)}')">${nodeHTML}</div></div>`;
+    // per-class mastery art: the game's skillallocation/skills_classimage (paneArt), drawn crisp at
+    // (0,0) over the pane — opaque figure on the left, alpha-fading right where the nodes sit. Sized to
+    // its native box (640×605 within the 983×605 canvas) so it matches the in-game skill window exactly.
+    const pab = ST.paneArtBox || { x: 0, y: 0, w: cw, h: ch };
+    const artVars = cls.paneArt
+      ? `--pane-art:url('assets/${esc(cls.paneArt)}');--pane-art-w:${pct(pab.w, cw)};--pane-art-h:${pct(pab.h, ch)};--pane-art-x:${pct(pab.x, cw)};--pane-art-y:${pct(pab.y, ch)}`
+      : "";
+    body.innerHTML = `<div class="st-scroll"><div class="skilltree-canvas ${cls.paneArt ? "has-art" : ""}"
+      style="aspect-ratio:${cw}/${ch};background-image:url('assets/${esc(ST.canvas.bg)}');${artVars}">${linksSVG}${nodeHTML}</div></div>`;
     const ns = body.querySelector(".st-scroll");
     if (ns) { ns.scrollLeft = sx; ns.scrollTop = sy; }
   }

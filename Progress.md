@@ -60,13 +60,47 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
   class art. data.js grew 1.37→2.08 MB. Not yet reviewed on a real phone (LAN preview was blocked by a
   phone-side filter / router client-isolation — PC firewall was confirmed open, so we shipped instead).
 
+**UI POLISH — mastery selector + skill tree (2026-09-19, NOT yet deployed).** `app.js` + `styles.css`
+only (no data/pipeline change):
+- **Centered home layout (web).** `.class-panel`, `.totals`, `.xref-section`, `.app-foot` now use
+  `margin: … auto` so every home block centers in a column (paperdoll already was).
+- **Mastery selector reworked.** Dropped the "Choose a Mastery" rail instructions and the
+  "Pick a mastery to view…" footer hint; moved the **Choose/Confirm button into the header next to the
+  ×** (new `.st-header-right` + `.st-header-confirm`, injected per-render, hidden in allocation mode).
+  Selection is **tinted red** (inset red wash + `--accent-hi` outline, was gold glow) and the hover
+  **brightness pop is gone**. Banner list sits left of an explicit divider (`border-right`), preview
+  fills the container width independent of prose. **Mobile (`≤900`):** rail/hero hidden (`.mode-pick`),
+  banners become a **centered vertical list**, and the info panel only appears once a mastery is tapped
+  (`.st-select.has-sel`).
+- **Fixed-size preview (task 1).** Preview is now a stable region — class art pinned at top (`height:58%`,
+  `flex:0 0 auto`) with prose scrolling below (`flex:1 1 auto; min-height:0; overflow-y:auto`), panel
+  `overflow:hidden` + `justify-content:flex-start`. Art no longer shifts/resizes with description length.
+- **Unique per-mastery tree backdrops (task 2).** The per-class art was hidden behind the opaque shared
+  grid; moved `--class-art`/`has-art` onto `.skilltree-canvas` and added
+  `.skilltree-canvas.has-art::before` (`cover`, `opacity:.32`, behind nodes). All 9 masteries now show a
+  distinct backdrop over the shared stone grid.
+- **Skill connectors (task 3).** `renderTreeCanvas` emits an SVG overlay (`.st-links`,
+  `preserveAspectRatio="none"`, non-scaling strokes) drawing a line from each modifier skill to the base
+  skill it `requires` (**124 links**, all resolve). Dim by default, lights **gold** when the prerequisite
+  point is invested AND the tier is unlocked. Z-order: backdrop(0) → connectors(1) → nodes(2/alloc3/hover4).
+- **Allocation enforcement (task 4).** Confirmed already-correct: `allocSkill`/`legalizeSkills`/
+  `tierUnlocked` gate by mastery-bar level (tiers→`[1,5,10,15,20,25,32,40,50]`), require ≥1 pt in a
+  modifier's base skill, enforce the shared point budget, and cascade un-allocation on downgrade — the
+  new connectors just make the gating legible. Locked nodes stay 🔒/greyed and flash the reason on click.
+- **Status:** `node --check` clean; data joins re-verified (124/124 links, 9/9 backdrops). Visual-only,
+  **needs a browser look on desktop + phone width** before pushing. Not deployed.
+
 ## Backlog
 ### In progress
 - (none — P1 talent + devotion calculators complete; pick the top "Next up" item)
 
 ### Next up (P1)
-- [ ] **Mobile review of the new UI** (unverified on a real phone): class-selection screen is a
-      two-column layout (banner list + art preview) — stack it vertically under a breakpoint if cramped;
+- [ ] **Deploy + browser-verify the 2026-09-19 UI polish** (mastery-selector rework, centered home,
+      fixed-size preview, per-mastery backdrops, skill connectors) — currently local-only; look on
+      desktop + phone width, then push to `main`. Easy dials if needed: backdrop `opacity:.32`, connector
+      stroke colors, art `height:58%`.
+- [ ] **Mobile review of the new UI** (still unverified on a real phone): class-selection screen now
+      stacks vertically under `≤900` (centered banner list + on-tap info panel) — confirm it reads well;
       check skill-node + devotion-star tap-target sizes; touch has no right-click/Shift for rank-DOWN,
       so add a −/＋ stepper (e.g. in the node detail) for touch.
 - [ ] The ~26 iconless skill-tree modifier nodes (render with a letter fallback now) — resolve via
@@ -141,3 +175,33 @@ compiled from `_gd_extract` by `build-data.mjs` (1,762 icons copied) with hygien
   audited the firewall and confirmed it was OPEN (8080 Allow Any + Node allow on Public), so the block
   was phone-side (VPN/Private-Relay/DNS) or router client-isolation. Per user, pushed to `main` and
   deployed to GitHub Pages instead; verified the live CDN serves the new build. Server stopped.
+- 2026-09-19: **UI polish (mastery selector + skill tree), local-only.** `app.js`+`styles.css`, no data
+  change. (1) Centered home blocks on web. (2) Reworked the mastery selector: dropped rail "Choose a
+  Mastery" + footer hint, moved Confirm next to the header ×, red-tinted selection, killed the hover
+  pop, list-left-of-divider, and a **fixed-size preview** (art pinned top, prose scrolls) so it no longer
+  resizes with description length. Mobile (`≤900`): rail hidden, centered vertical banner list, info panel
+  on tap. (3) **Per-mastery tree backdrops** — moved class art onto the canvas (`::before`, opacity .32)
+  since the opaque grid was hiding it. (4) **Skill connectors** — SVG lines from each modifier to its
+  required base skill (124/124), gold when the prereq+tier are satisfied. (5) Confirmed tier/prereq
+  **allocation enforcement** was already correct; connectors just make it visible. `node --check` clean;
+  joins re-verified. Needs a browser look before deploying — NOT pushed.
+
+- **UI overhaul session (2026-09-19, remote-control):**
+  1. **Mobile mastery selector** — on `≤900` the picker now shows ONLY the selection icons; dropped the
+     `.st-select.has-sel .st-select-preview` reveal so the mastery art + prose stay hidden on mobile
+     (confirm lives in the header, unaffected). Desktop unchanged.
+  2. **Corrected skill-tree backdrop art (grounded)** — the pane backdrop was using the framed class-
+     *selection* portrait (`classselection/skills_classselectedimage`, cover+opacity .32). The game's
+     skill-allocation pane (`records/ui/skills/classNN/classtable.dbr` → `skillPaneMasteryBitmap`) actually
+     draws `skillallocation/skills_classimage${cid}` (640×605) crisp at (0,0) over the 983×605
+     `skills_classbackgroundimage` pane — the asset carries its own right-side alpha fade. Added `paneArt`
+     + `paneArtBox{0,0,640,605}` to build-data; `renderTreeCanvas` + `.has-art::before` now draw it left-
+     anchored at its native box, no cover/opacity hacks. `art` (selection portrait) kept for the picker.
+  3. **Berserker (gdx3 / class 10) fully wired** — the extract's `ui_layout.json` predated gdx3, so the
+     app only had 9 skill trees. Re-ran `build_ui_layout.py` (records.pkl already had all 31 class10
+     buttons) → `build_devotion_map.py` (re-merges devotion). Skilltree now 10 classes, Berserker = 31/31
+     named+iconed nodes, mastery-bar attrs populated (50 lvls), paneArt = `skills_classimage10`. Fixed
+     `build_progression.py dual_class_names()` (was classes 1–9, mis-padded `0{a}0{b}` tag) → zero-padded
+     `tagSkillClassName{a:02d}{b:02d}`, all 10 masteries → 45 combos incl. 9 Berserker pairings (Thane,
+     Dreadnaught, Mystic, Reaver, Evoker, Primalist, Runekeeper, Veilwalker, Zealot). App comboName key
+     (`Number(cid)` sorted, e.g. "110") matches. data.js rebuilt (2056 icons). NOT pushed — browser look first.
