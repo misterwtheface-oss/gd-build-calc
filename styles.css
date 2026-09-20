@@ -396,6 +396,8 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 /* confirmation button now lives beside the close button in the header */
 .st-header-right { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
 .st-header-confirm:empty { display: none; }
+/* footer confirm slot is desktop-hidden (confirm sits in the header); mobile reveals it */
+.st-footer-confirm { display: none; }
 .st-select-confirm { font-size: .85rem; padding: .38rem 1rem; white-space: nowrap; }
 .st-select-confirm:disabled { opacity: .5; cursor: default; background: var(--surface2); border-color: var(--border); }
 /* pick mode drops the rail instructions and the footer hint */
@@ -507,9 +509,28 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
   .devo-layout { flex-direction: column; } .devo-info { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 42%; }
   .mb-bar { grid-template-columns: repeat(25, 1fr); }
 
-  /* mastery selector: only the selection icons on mobile — no art, no prose */
-  .st-select { flex-direction: column; gap: .8rem; }
-  .st-select-list { width: 100%; align-items: center; border-right: none; padding-right: 0; }
-  .st-banner { width: 240px; max-width: 100%; }
+  /* ── mobile mastery selector (pick mode) ────────────────────────────────
+     Just the mastery buttons on a plain black field: no art, no prose, no UI
+     backdrop; a minimal header; the Choose button moved to the footer beside
+     Close; and the button stack centered both axes. */
+  .skilltree-panel.mode-pick,
+  .skilltree-panel.mode-pick .overlay-header,
+  .skilltree-panel.mode-pick .overlay-footer { background: #000; }
+  /* header shrinks to a thin bar — confirm has left it, tabs + close only */
+  .skilltree-panel.mode-pick .overlay-header { padding: .25rem .6rem; border-bottom-color: #1a1a1a; }
+  .skilltree-panel.mode-pick .st-tabs { font-size: .74rem; gap: .25rem; }
+  .skilltree-panel.mode-pick .st-tab { padding: .2rem .45rem; }
+  /* confirm hops from header to footer, next to Close */
+  .skilltree-panel.mode-pick .st-header-confirm { display: none; }
+  .skilltree-panel.mode-pick .overlay-footer { justify-content: center; border-top-color: #1a1a1a; }
+  .skilltree-panel.mode-pick .st-footer-confirm { display: inline-flex; }
+  .skilltree-panel.mode-pick .st-select-confirm { font-size: .95rem; padding: .55rem 1.4rem; }
+  /* drop the backdrop art entirely (it's set inline) → black; center the buttons */
+  .st-select { flex-direction: column; gap: .8rem; padding: 1rem;
+    justify-content: center; align-items: center; height: 100%;
+    background: #000 !important; background-image: none !important; }
+  .st-select-list { width: 100%; align-items: center; justify-content: center;
+    flex: 0 1 auto; max-height: 100%; border-right: none; padding-right: 0; }
+  .st-banner { width: 260px; max-width: 90%; height: 50px; }
   .st-select-preview { display: none; }
 }

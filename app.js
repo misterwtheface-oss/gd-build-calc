@@ -475,6 +475,7 @@
         </div>
         <div class="overlay-footer">
           <span class="st-hint muted"></span>
+          <span class="st-footer-confirm"></span>
           <button data-action="st-close">Close</button>
         </div>
       </div>`;
@@ -503,6 +504,7 @@
     const cid = state.skill.cid;
 
     const headerConfirm = panel.querySelector(".st-header-confirm");
+    const footerConfirm = panel.querySelector(".st-footer-confirm");
 
     // class-selection mode (empty slot) — authentic class-selection screen
     if (String(cid).startsWith("__pick__")) {
@@ -531,15 +533,19 @@
           </div>
         </div>
       </div>`;
-      // confirmation lives next to the close button in the header
-      headerConfirm.innerHTML = `<button class="st-select-confirm" data-action="st-choose" data-cid="${esc(sel ? sel.id : "")}" ${taken ? "disabled" : ""}>
+      // confirm button — rendered into BOTH the header slot (desktop) and the footer
+      // slot (mobile, beside Close); CSS shows exactly one per viewport.
+      const confirmHTML = `<button class="st-select-confirm" data-action="st-choose" data-cid="${esc(sel ? sel.id : "")}" ${taken ? "disabled" : ""}>
         ${taken ? "Already chosen" : `Choose ${esc(sel ? sel.name : "")}`}</button>`;
+      headerConfirm.innerHTML = confirmHTML;
+      if (footerConfirm) footerConfirm.innerHTML = confirmHTML;
       if (panel.querySelector(".st-hint")) panel.querySelector(".st-hint").textContent = "";
       return;
     }
 
     panel.classList.remove("mode-pick");
     headerConfirm.innerHTML = "";
+    if (footerConfirm) footerConfirm.innerHTML = "";
     rail.innerHTML = masteryRailHTML(cid);
     renderTreeCanvas(body, cid);
     panel.querySelector(".st-hint").textContent = "Click a node to add a rank · right-click (or Shift-click) to remove.";
