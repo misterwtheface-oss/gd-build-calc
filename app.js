@@ -488,7 +488,8 @@
     for (let i = 0; i < 2; i++) {
       const cid = state.masteries[i];
       if (cid) slots.push(`<button class="st-tab ${cid === state.skill.cid ? "on" : ""}" data-action="st-class" data-cid="${esc(cid)}">
-          ${esc(ST.classes[cid]?.name)} <span class="st-tab-lvl">${masteryLevel(cid)}</span></button>`);
+          ${esc(ST.classes[cid]?.name)} <span class="st-tab-lvl">${masteryLevel(cid)}</span>
+          <span class="st-tab-x" data-action="st-remove" data-cid="${esc(cid)}" role="button" aria-label="Remove ${esc(ST.classes[cid]?.name)}" title="Remove mastery">✕</span></button>`);
       else slots.push(`<button class="st-tab add ${state.skill.cid === "__pick__" + i ? "on" : ""}" data-action="st-pick" data-slot="${i}">＋ Add Mastery</button>`);
     }
     const spAvail = skillPointsAvailable(), spUsed = skillPointsUsed();
@@ -658,6 +659,10 @@
     legalizeSkills(); persist(); renderSkillTree();
   }
   function removeMastery(cid) {
+    // confirm only when there's real investment (past the free level-1 pick) so the
+    // small ✕ can't nuke a built-out tree by accident; refunded points return to the pool.
+    const invested = masteryLevel(cid) > 1 || Object.keys(state.skills).some((p) => p.includes(`playerclass${cid}/`));
+    if (invested && !confirm(`Remove ${ST.classes[cid]?.name || "this mastery"}? Its allocated points are refunded to your pool.`)) return;
     state.masteries = state.masteries.filter((c) => c !== cid);
     delete state.bar[cid];
     legalizeSkills(); persist();

@@ -344,6 +344,10 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 .st-tab.on { background: rgba(139,35,24,.5); color: var(--text); border-color: var(--border-hi); font-weight: 600; }
 .st-tab.add { border-style: dashed; color: var(--text-dim); }
 .st-tab-lvl { background: var(--bg); border-radius: 999px; font-size: .68rem; padding: 0 .4rem; min-width: 1.3rem; text-align: center; color: var(--gold); }
+/* remove-mastery affordance on the assigned tab — always visible so deselect is reachable everywhere */
+.st-tab-x { display: inline-flex; align-items: center; justify-content: center; width: 1.15rem; height: 1.15rem;
+  border-radius: 999px; font-size: .72rem; line-height: 1; color: var(--text-dim); border: 1px solid transparent; }
+.st-tab-x:hover { color: #fff; background: rgba(168,51,34,.7); border-color: var(--border-hi); }
 .st-points { margin-left: auto; font-size: .78rem; color: var(--text-muted); white-space: nowrap; }
 .st-points b { color: var(--gold); }
 .st-layout { flex: 1; display: flex; overflow: hidden; }
@@ -508,6 +512,8 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
   .st-layout { flex-direction: column; } .st-rail { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 40%; }
   .devo-layout { flex-direction: column; } .devo-info { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 42%; }
   .mb-bar { grid-template-columns: repeat(25, 1fr); }
+  /* bigger deselect tap target on touch */
+  .st-tab-x { width: 1.5rem; height: 1.5rem; font-size: .9rem; margin-left: .15rem; }
 
   /* ── mobile mastery selector (pick mode) ────────────────────────────────
      Just the mastery buttons on a plain black field: no art, no prose, no UI
