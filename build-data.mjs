@@ -275,6 +275,19 @@ function famStem(skPath) {
   return fn.replace(/_(pet)?mod(ifier)?$/, "").replace(/\d+[a-z]*$/, "");
 }
 
+// Some tree buttons point to a WRAPPER skill (toggled aura / SkillSecondary / pet-modifier)
+// that carries no gameplay fields of its own — the real skillTier + scaling live on the record
+// it references via buffSkillName / petSkillName / modifiedSkillName. Follow that chain to the
+// record that actually defines the skill. The mastery gate is code-verified as
+// skillMasteryTierLevel[skillTier-1] (SkillProfile::LoadProfile @ 0x44dda0); without this
+// resolution ~49 wrapper skills have no skillTier and would default to tier 1 (mis-gated).
+function effectiveSkillRec(path, depth = 0) {
+  const rec = skillsRaw[path] || skillsRaw[(path || "").toLowerCase()] || {};
+  if (rec.skillTier != null || rec.skillMaxLevel != null || depth >= 5) return rec;
+  const next = rec.buffSkillName || rec.petSkillName || rec.modifiedSkillName;
+  return next ? effectiveSkillRec(next, depth + 1) : rec;
+}
+
 const skilltree = {
   canvas: { w: stSrc.canvas.w, h: stSrc.canvas.h, bg: copyIcon(stSrc.canvas.bg) },
   // per-class mastery art (paneArt) is drawn at (0,0), native 640×605, over the 983×605 pane
@@ -318,7 +331,9 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
   if (!art) warnings.push(`class ${cid} art missing`);
   const paneArt = copyIcon(`ui/skills/skillallocation/skills_classimage${cid}.png`);
   if (!paneArt) warnings.push(`class ${cid} pane art missing`);
-  const classDesc = (skillsRaw[mastery.path] || {}).desc || null;
+  // the real mastery-pane flavor blurb (classtable.dbr → skillPaneDescriptionTag), not the
+  // terse mastery-bar training-node tooltip that skillsRaw[mastery.path].desc holds
+  const classDesc = (masteryRaw[cid] || {}).description || null;
 
   skilltree.classes[cid] = {
     id: cid,
@@ -327,6 +342,7 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
     bar: { attr: barAttr },
     nodes: enriched.map((e) => {
       const { n, rec, mod } = e;
+      const sRec = effectiveSkillRec(n.skill);   // gameplay record (follows buff/pet/modifier chain)
       stNodes++;
       const icon = n.icon ? copyIcon(n.icon) : null;
       if (icon) stIcons++;
@@ -342,17 +358,17 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
         }
         if (base) { requires = base.n.skill; stModRes++; }
       }
-      const ranks = N(rec.skillUltimateLevel) || N(rec.skillMaxLevel) || 1;
+      const ranks = N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1;
       return {
         skill: n.skill,
-        name: n.name || rec.name || null,
+        name: n.name || sRec.name || rec.name || null,
         icon, x: n.x, y: n.y, circular: !!n.circular, masteryBar: !!n.masteryBar,
-        tier: N(rec.skillTier) || 1,
-        maxLevel: N(rec.skillMaxLevel) || (n.masteryBar ? barMax : 1),
-        ultimateLevel: N(rec.skillUltimateLevel) || N(rec.skillMaxLevel) || 1,
+        tier: N(sRec.skillTier) || 1,
+        maxLevel: N(sRec.skillMaxLevel) || (n.masteryBar ? barMax : 1),
+        ultimateLevel: N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1,
         requires,
-        desc: rec.desc || null,
-        scaling: n.masteryBar ? [] : skillScaling(rec, ranks),
+        desc: sRec.desc || rec.desc || null,
+        scaling: n.masteryBar ? [] : skillScaling(sRec, ranks),
       };
     }),
   };
