@@ -429,10 +429,10 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 .st-tiermark.on { color: var(--gold); text-shadow: 0 0 6px rgba(216,178,74,.85), 0 1px 2px #000; }
 
 /* the beam of light rising from each tier circle — lit once the mastery bar reaches that level */
-.st-ray { position: absolute; z-index: 1; top: 5%; height: 87%; width: 7px; transform: translateX(-50%);
+.st-ray { position: absolute; z-index: 1; top: 5%; height: 82%; width: 3px; transform: translateX(-50%);
   pointer-events: none; opacity: 0; transition: opacity .25s ease;
   background: linear-gradient(to top, rgba(235,205,130,.9), rgba(235,205,130,.28) 55%, rgba(235,205,130,0) 92%);
-  filter: blur(1.2px); mix-blend-mode: screen; }
+  filter: blur(1px); mix-blend-mode: screen; }
 .st-ray.on { opacity: 1; }
 /* per-mastery backdrop: the game's skillallocation mastery art, drawn crisp at its native box
    (left-anchored, ~640/983 wide, full height) exactly as the in-game skill window composites it.
