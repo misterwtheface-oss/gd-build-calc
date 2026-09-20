@@ -221,8 +221,11 @@ button.ghost:hover { border-color: var(--border-hi); background: rgba(201,162,39
 .st-hint { flex: 1; font-size: .75rem; }
 @media (max-width: 900px) {
   .skilltree-panel { width: 100vw; max-width: none; height: 100dvh; max-height: 100dvh; border: none; border-radius: 0; }
-  /* keep nodes tappable: don't shrink the canvas below a usable width — scroll instead */
-  .skilltree-canvas { min-width: 760px; }
+  /* the entire tree must fit with NO vertical scroll: let the canvas be width:100% and its
+     aspect-ratio set the height, which fits inside the portrait viewport (no min-width forcing
+     it wider than the screen). Centered vertically in any leftover room. */
+  .skilltree-canvas { min-width: 0; width: 100%; max-width: none; }
+  .st-frame .st-scroll, .st-body > .st-scroll { align-items: center; }
 }
 
 /* ═══ DEVOTION galaxy (pannable/zoomable star map) ═══ */
@@ -418,6 +421,29 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 /* skill-tree canvas + nodes */
 .st-scroll { width: 100%; height: 100%; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: flex; align-items: flex-start; justify-content: center; position: relative; }
 .skilltree-canvas { position: relative; z-index: 1; background-size: 100% 100%; width: 100%; max-width: 1100px; }
+
+/* the game's ornate outer window frame; the interior pane fills its measured opening */
+.st-frame { position: relative; width: 100%; max-width: 1140px; margin: 0 auto; align-self: center;
+  aspect-ratio: 1001 / 720; background-size: 100% 100%; background-repeat: no-repeat; }
+.st-frame .st-scroll { position: absolute; top: var(--fi-t); left: var(--fi-l); right: var(--fi-r); bottom: var(--fi-b);
+  width: auto; height: auto; }
+
+/* the 9 numbered tier-gate circles along the bottom bar */
+.st-tiermark { position: absolute; z-index: 3; transform: translate(-50%, -50%); pointer-events: none;
+  font-size: clamp(.6rem, 1.4vw, .8rem); font-weight: 700; color: rgba(206,176,108,.5); text-shadow: 0 1px 2px #000; }
+.st-tiermark.on { color: var(--gold); text-shadow: 0 0 6px rgba(216,178,74,.85), 0 1px 2px #000; }
+
+/* bottom-right: points-available readout + a second "+" to add a mastery point */
+.st-ptbox { position: absolute; z-index: 3; right: 9.5%; bottom: 1.6%; display: flex; align-items: baseline; gap: .35rem;
+  padding: .1rem .5rem; pointer-events: none; }
+.st-ptlabel { font-size: clamp(.5rem, 1vw, .62rem); text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.st-ptval { font-size: clamp(.9rem, 2vw, 1.15rem); font-weight: 700; color: var(--gold); text-shadow: 0 1px 2px #000; }
+.st-ptval.none { color: var(--neg); }
+.st-mbadd { position: absolute; z-index: 3; right: 2.2%; bottom: 1.2%; width: clamp(26px, 3.4vw, 34px); aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center; padding: 0; font-size: clamp(1rem, 2.4vw, 1.35rem); font-weight: 700;
+  line-height: 1; color: #f3e6c4; background: rgba(139,35,24,.55); border: 1px solid var(--border-hi); border-radius: 6px; }
+.st-mbadd:hover:not(:disabled) { background: rgba(168,51,34,.8); }
+.st-mbadd:disabled { opacity: .4; cursor: default; }
 /* per-mastery backdrop: the game's skillallocation mastery art, drawn crisp at its native box
    (left-anchored, ~640/983 wide, full height) exactly as the in-game skill window composites it.
    The art carries its own right-side alpha fade, so no opacity/cover hacks — it blends over the
@@ -518,6 +544,11 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
   /* tree canvas: anchor to the left so the class art (drawn at x:0) is reachable, not
      centered-and-clipped; pan right for the rest of the tree */
   .st-scroll { justify-content: flex-start; }
+  /* the ornate outer frame is a desktop luxury — on mobile it would shrink the tree to a
+     tiny aspect-locked box, so unwrap it: transparent pass-through, canvas fills the height
+     (numbered circles + points box stay, since they live inside the canvas) */
+  .st-frame { aspect-ratio: auto; height: 100%; max-width: none; margin: 0; background-image: none !important; }
+  .st-frame .st-scroll { position: static; width: 100%; height: 100%; }
   /* bigger deselect tap target on touch */
   .st-tab-x { width: 1.5rem; height: 1.5rem; font-size: .9rem; margin-left: .15rem; }
 

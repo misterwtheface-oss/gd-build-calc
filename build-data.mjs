@@ -288,12 +288,20 @@ function effectiveSkillRec(path, depth = 0) {
   return next ? effectiveSkillRec(next, depth + 1) : rec;
 }
 
+const TIER_LEVELS = progression.skillMasteryTierLevel;   // [1,5,10,15,20,25,32,40,50]
 const skilltree = {
   canvas: { w: stSrc.canvas.w, h: stSrc.canvas.h, bg: copyIcon(stSrc.canvas.bg) },
   // per-class mastery art (paneArt) is drawn at (0,0), native 640×605, over the 983×605 pane
   paneArtBox: { x: 0, y: 0, w: 640, h: 605 },
   button: stSrc.button,
-  tierLevels: progression.skillMasteryTierLevel,   // [1,5,10,15,20,25,32,40,50]
+  tierLevels: TIER_LEVELS,
+  // the game's skill window sits inside an ornate outer frame (skills_classwindowbackgroundimage,
+  // 1001×720); the interior 983×605 pane fills its opening. Measured opening insets (fractions):
+  frame: copyIcon("ui/skills/skills_classwindowbackgroundimage.png"),
+  frameInset: { top: 0.115, right: 0.010, bottom: 0.051, left: 0.009 },
+  // the 9 tier-gate circles along the bottom bar (measured x-centers in 983px interior space),
+  // each labelled with the mastery level that tier unlocks at
+  tierMarks: [266, 346, 426, 506, 586, 666, 746, 826, 906].map((x, i) => ({ x, y: 560, level: TIER_LEVELS[i] })),
   masteryMax: progression.masteryBarMax,           // 50
   classSelectBg: copyIcon("ui/skills/classselection/skills_classselectionbackgroundimage.png"),
   // the game ships only TWO nameplate button skins (alternated by row), not one per class
