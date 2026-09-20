@@ -583,14 +583,22 @@
     const named = cls.nodes.filter((n) => n.name);
     const bySkill = new Map(named.map((n) => [n.skill, n]));
 
-    // connectors: a modifier skill is drawn wired to the base skill it requires.
-    // The line lights up (gold) once the prerequisite point is invested AND the
-    // mastery tier is unlocked — making the allocation gating visible.
+    // connectors: a modifier skill is drawn wired to the base skill it requires, as a rounded
+    // elbow — horizontal out from the base, a rounded quarter-turn, then vertical into the
+    // modifier (collapses to a straight run when they share a row/column). The join lights up
+    // (gold) once the prerequisite point is invested AND the mastery tier is unlocked.
     const ccx = (n) => n.x + bw / 2, ccy = (n) => n.y + bh / 2;
+    const elbow = (x1, y1, x2, y2) => {
+      const dx = x2 - x1, dy = y2 - y1;
+      if (Math.abs(dy) < 2 || Math.abs(dx) < 2) return `M${x1},${y1} L${x2},${y2}`;
+      const sx = Math.sign(dx), sy = Math.sign(dy);
+      const r = Math.min(14, Math.abs(dx), Math.abs(dy));
+      return `M${x1},${y1} H${x2 - sx * r} Q${x2},${y1} ${x2},${y1 + sy * r} V${y2}`;
+    };
     const links = named.filter((n) => n.requires && bySkill.has(n.requires)).map((n) => {
       const p = bySkill.get(n.requires);
       const on = (state.skills[n.requires] > 0) && tierUnlocked(cid, n.tier);
-      return `<line class="st-link ${on ? "on" : ""}" x1="${ccx(p)}" y1="${ccy(p)}" x2="${ccx(n)}" y2="${ccy(n)}" vector-effect="non-scaling-stroke" />`;
+      return `<path class="st-link ${on ? "on" : ""}" d="${elbow(ccx(p), ccy(p), ccx(n), ccy(n))}" fill="none" vector-effect="non-scaling-stroke" />`;
     }).join("");
     const linksSVG = links
       ? `<svg class="st-links" viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" aria-hidden="true">${links}</svg>`

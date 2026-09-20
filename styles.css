@@ -447,7 +447,7 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
   pointer-events: none; z-index: 0; }
 /* connectors between a modifier skill and its prerequisite */
 .st-links { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
-.st-link { stroke: rgba(190,170,120,.30); stroke-width: 2; }
+.st-link { stroke: rgba(190,170,120,.30); stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
 .st-link.on { stroke: var(--gold); stroke-width: 3; filter: drop-shadow(0 0 3px rgba(216,178,74,.7)); }
 .st-node { position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center; cursor: pointer;
   border-radius: 4px; background: rgba(6,6,10,.35); box-shadow: inset 0 0 0 1px rgba(0,0,0,.5); }
