@@ -524,6 +524,11 @@
           <span class="st-banner-name">${esc(c.name)}</span>${taken ? `<span class="st-banner-tag">✓</span>` : ""}</button>`;
       }).join("");
       const taken = sel && chosen.has(sel.id);
+      const slot = String(cid).replace("__pick__", "");
+      // confirm button — placed in the header (desktop), and inside the info panel on
+      // mobile where selecting a mastery opens its art + full prose and you confirm there.
+      const confirmHTML = `<button class="st-select-confirm" data-action="st-choose" data-cid="${esc(sel ? sel.id : "")}" ${taken ? "disabled" : ""}>
+        ${taken ? "Already chosen" : `Choose ${esc(sel ? sel.name : "")}`}</button>`;
       body.innerHTML = `<div class="st-select ${hasSel ? "has-sel" : ""}" ${ST.classSelectBg ? `style="background-image:url('assets/${esc(ST.classSelectBg)}')"` : ""}>
         <div class="st-select-list">${banners}</div>
         <div class="st-select-preview">
@@ -532,12 +537,12 @@
             <h2 class="st-select-name">${esc(sel ? sel.name : "")}</h2>
             ${sel && sel.desc ? `<p class="st-select-desc">${esc(sel.desc)}</p>` : ""}
           </div>
+          <div class="st-select-actions">
+            <button class="st-back ghost" data-action="st-pick" data-slot="${esc(slot)}">← Back</button>
+            ${confirmHTML}
+          </div>
         </div>
       </div>`;
-      // confirm button — rendered into BOTH the header slot (desktop) and the footer
-      // slot (mobile, beside Close); CSS shows exactly one per viewport.
-      const confirmHTML = `<button class="st-select-confirm" data-action="st-choose" data-cid="${esc(sel ? sel.id : "")}" ${taken ? "disabled" : ""}>
-        ${taken ? "Already chosen" : `Choose ${esc(sel ? sel.name : "")}`}</button>`;
       headerConfirm.innerHTML = confirmHTML;
       if (footerConfirm) footerConfirm.innerHTML = confirmHTML;
       if (panel.querySelector(".st-hint")) panel.querySelector(".st-hint").textContent = "";
@@ -554,24 +559,20 @@
   function masteryRailHTML(cid) {
     const cls = ST.classes[cid]; if (!cls) return "";
     const lvl = masteryLevel(cid);
-    const nextTier = TIER_LEVELS.find((t) => t > lvl);
-    const hero = cls.art ? `<div class="st-rail-hero"><img src="assets/${esc(cls.art)}" alt="${esc(cls.name)}"><span class="st-rail-hero-name">${esc(cls.name)}</span></div>` : "";
-    // 50-segment mastery bar with tier markers
+    // Investment tracker only — no art, no chrome: just the level readout, the 50 CSS
+    // squares (tier segments keep their marker border), and the −/+ steppers.
     const segs = [];
     for (let i = 1; i <= MASTERY_MAX; i++) {
       const isTier = TIER_LEVELS.includes(i);
       segs.push(`<button class="mb-seg ${i <= lvl ? "on" : ""} ${isTier ? "tier" : ""}" data-action="mb-set" data-cid="${esc(cid)}" data-lvl="${i}"
         title="Mastery level ${i}${isTier ? " — unlocks a skill tier" : ""}"></button>`);
     }
-    return `${hero}<div class="st-rail-head">${esc(cls.name)} Mastery</div>
-      <div class="mb-level">Level <b>${lvl}</b> / ${MASTERY_MAX}</div>
+    return `<div class="mb-level">Level <b>${lvl}</b> / ${MASTERY_MAX}</div>
       <div class="mb-ctrls">
         <button class="mb-btn" data-action="mb-dec" data-cid="${esc(cid)}" ${lvl <= 0 ? "disabled" : ""}>−</button>
         <div class="mb-bar">${segs.join("")}</div>
         <button class="mb-btn" data-action="mb-inc" data-cid="${esc(cid)}" ${lvl >= MASTERY_MAX ? "disabled" : ""}>＋</button>
-      </div>
-      <div class="mb-tiernote muted">${nextTier ? `Next tier unlocks at mastery level ${nextTier}` : "All skill tiers unlocked"}</div>
-      ${lvl > 0 ? `<button class="st-remove ghost" data-action="st-remove" data-cid="${esc(cid)}">Remove mastery</button>` : ""}`;
+      </div>`;
   }
   function renderTreeCanvas(body, cid) {
     const scroller = body.querySelector(".st-scroll");
