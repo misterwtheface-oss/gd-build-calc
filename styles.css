@@ -213,7 +213,7 @@ button.ghost:hover { border-color: var(--border-hi); background: rgba(201,162,39
   background-size: 100% 100%; background-repeat: no-repeat;
 }
 .st-node { position: absolute; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px; }
-.st-node img { width: 100%; height: 100%; object-fit: contain; }
+.st-node img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 .st-node:hover { box-shadow: 0 0 0 2px var(--border-hi), 0 0 10px rgba(216,178,74,.5); z-index: 2; }
 .st-node.circ { border-radius: 50%; }
 .st-node.empty { border: 1px dashed var(--border); background: rgba(0,0,0,.25); cursor: default; }
@@ -428,17 +428,12 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
   font-size: clamp(.6rem, 1.4vw, .8rem); font-weight: 700; color: rgba(206,176,108,.5); text-shadow: 0 1px 2px #000; }
 .st-tiermark.on { color: var(--gold); text-shadow: 0 0 6px rgba(216,178,74,.85), 0 1px 2px #000; }
 
-/* bottom-right: points-available readout + a second "+" to add a mastery point */
-.st-ptbox { position: absolute; z-index: 3; right: 9.5%; bottom: 1.6%; display: flex; align-items: baseline; gap: .35rem;
-  padding: .1rem .5rem; pointer-events: none; }
-.st-ptlabel { font-size: clamp(.5rem, 1vw, .62rem); text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
-.st-ptval { font-size: clamp(.9rem, 2vw, 1.15rem); font-weight: 700; color: var(--gold); text-shadow: 0 1px 2px #000; }
-.st-ptval.none { color: var(--neg); }
-.st-mbadd { position: absolute; z-index: 3; right: 2.2%; bottom: 1.2%; width: clamp(26px, 3.4vw, 34px); aspect-ratio: 1;
-  display: flex; align-items: center; justify-content: center; padding: 0; font-size: clamp(1rem, 2.4vw, 1.35rem); font-weight: 700;
-  line-height: 1; color: #f3e6c4; background: rgba(139,35,24,.55); border: 1px solid var(--border-hi); border-radius: 6px; }
-.st-mbadd:hover:not(:disabled) { background: rgba(168,51,34,.8); }
-.st-mbadd:disabled { opacity: .4; cursor: default; }
+/* the beam of light rising from each tier circle — lit once the mastery bar reaches that level */
+.st-ray { position: absolute; z-index: 1; top: 5%; height: 87%; width: 7px; transform: translateX(-50%);
+  pointer-events: none; opacity: 0; transition: opacity .25s ease;
+  background: linear-gradient(to top, rgba(235,205,130,.9), rgba(235,205,130,.28) 55%, rgba(235,205,130,0) 92%);
+  filter: blur(1.2px); mix-blend-mode: screen; }
+.st-ray.on { opacity: 1; }
 /* per-mastery backdrop: the game's skillallocation mastery art, drawn crisp at its native box
    (left-anchored, ~640/983 wide, full height) exactly as the in-game skill window composites it.
    The art carries its own right-side alpha fade, so no opacity/cover hacks — it blends over the
@@ -454,7 +449,7 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 .st-link.on { stroke: var(--gold); stroke-width: 3; filter: drop-shadow(0 0 3px rgba(216,178,74,.7)); }
 .st-node { position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center; cursor: pointer;
   border-radius: 4px; background: rgba(6,6,10,.35); box-shadow: inset 0 0 0 1px rgba(0,0,0,.5); }
-.st-node img { width: 100%; height: 100%; object-fit: contain; }
+.st-node img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 .st-node.circ { border-radius: 50%; }
 .st-node .st-noicon { color: var(--text-muted); font-weight: 700; font-size: .8rem; }
 .st-node:hover { box-shadow: 0 0 0 2px var(--border-hi), 0 0 10px rgba(216,178,74,.5); z-index: 4; }

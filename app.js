@@ -615,20 +615,16 @@
       ? `--pane-art:url('assets/${esc(cls.paneArt)}');--pane-art-w:${pct(pab.w, cw)};--pane-art-h:${pct(pab.h, ch)};--pane-art-x:${pct(pab.x, cw)};--pane-art-y:${pct(pab.y, ch)}`
       : "";
 
-    // number the 9 tier-gate circles along the bottom bar (1/5/10/…/50); lit once the mastery
-    // bar reaches that level.
+    // number the 9 tier-gate circles along the bottom bar (1/5/10/…/50), and light each circle's
+    // beam of rays upward, once the mastery bar reaches that level (lvl 5 lights tiers 1 and 5).
     const lvl = masteryLevel(cid);
     const marksHTML = (ST.tierMarks || []).map((m) =>
-      `<span class="st-tiermark ${lvl >= m.level ? "on" : ""}" style="left:${pct(m.x, cw)};top:${pct(m.y, ch)}">${m.level}</span>`
+      `<span class="st-ray ${lvl >= m.level ? "on" : ""}" style="left:${pct(m.x, cw)}"></span>
+       <span class="st-tiermark ${lvl >= m.level ? "on" : ""}" style="left:${pct(m.x, cw)};top:${pct(m.y, ch)}">${m.level}</span>`
     ).join("");
 
-    // bottom-right: points-available readout + a second "+" that adds a mastery point
-    const remaining = skillPointsAvailable() - skillPointsUsed();
-    const bottomBox = `<div class="st-ptbox"><span class="st-ptlabel">Points</span><span class="st-ptval ${remaining <= 0 ? "none" : ""}">${remaining}</span></div>
-      <button class="st-mbadd" data-action="mb-inc" data-cid="${esc(cid)}" ${lvl >= MASTERY_MAX || remaining <= 0 ? "disabled" : ""} title="Add a mastery point">+</button>`;
-
     const canvas = `<div class="skilltree-canvas ${cls.paneArt ? "has-art" : ""}"
-      style="aspect-ratio:${cw}/${ch};background-image:url('assets/${esc(ST.canvas.bg)}');${artVars}">${linksSVG}${nodeHTML}${marksHTML}${bottomBox}</div>`;
+      style="aspect-ratio:${cw}/${ch};background-image:url('assets/${esc(ST.canvas.bg)}');${artVars}">${linksSVG}${nodeHTML}${marksHTML}</div>`;
     // nest the interior inside the game's ornate outer window frame
     const fi = ST.frameInset || { top: 0, right: 0, bottom: 0, left: 0 };
     const framed = ST.frame
