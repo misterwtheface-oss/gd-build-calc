@@ -205,3 +205,50 @@ only (no data/pipeline change):
      `tagSkillClassName{a:02d}{b:02d}`, all 10 masteries → 45 combos incl. 9 Berserker pairings (Thane,
      Dreadnaught, Mystic, Reaver, Evoker, Primalist, Runekeeper, Veilwalker, Zealot). App comboName key
      (`Number(cid)` sorted, e.g. "110") matches. data.js rebuilt (2056 icons). NOT pushed — browser look first.
+
+- **UI overhaul + skill-window fidelity + tooltips + synergy edges (2026-09-19 → 09-21, remote-control):**
+  Continues the session above; all LIVE on GitHub Pages (auto-deploy, main; site has NO active users →
+  push+deploy straight to main, no local-verify gate).
+  4. **Mobile mastery info = half-page bottom sheet** — tapping a mastery opens a ~62vh bottom sheet
+     (art + full prose + Back/Choose) over the dimmed list, not full-screen. Fixed a flex `min-width:auto`
+     chain (`#overlay-root` is flex; the `<img>` inflated the panel past 100vw) with a definite width.
+  5. **Mastery prose grounded** — was showing the terse mastery-bar training-node tooltip
+     (`_classtraining_classNN.dbr.skillBaseDescription`). Real blurb = `classtable.dbr →
+     skillPaneDescriptionTag → tagSkillClassDescription{NN}`. `build_tables.py build_masteries()` now emits
+     `description`; `build-data.mjs` reads `masteryRaw[cid].description`.
+  6. **Skill mastery-gating fix** — `[skillTier-1]` index into `[1,5,10,15,20,25,32,40,50]` was correct
+     (code: `SkillProfile::LoadProfile @ 0x44dda0`), but 49 tree buttons point to WRAPPER skills (toggled
+     auras / SkillSecondary / pet-mods) with no `skillTier`; real tier is on `buffSkillName`/`petSkillName`/
+     `modifiedSkillName`. `build-data` follows that chain (`effectiveSkillRec`) for tier + scaling → 43
+     skills were mis-gated to lvl 1 (e.g. Field Command now lvl 20).
+  7. **Mobile mastery selector polish** — black field (no UI backdrop), tiny header, Choose→footer,
+     centered stack; deselect via a ✕ on each assigned mastery TAB (rail's old remove button dropped).
+     Rail is now JUST the investment tracker (level readout + 50 CSS squares + −/+, no art/chrome).
+  8. **Skill window fidelity** — nest the interior in the game's ornate outer frame
+     (`skills_classwindowbackgroundimage`, opening insets measured t11.5/r1.0/b5.1/l0.9%); number the 9
+     bottom tier circles 1/5/10/…/50 (measured x-centers, lit as the bar reaches each) + light-rays rising
+     from each (origin pinned to the ring opening y=546/9.75%-from-bottom); skill icons `image-rendering:
+     pixelated` (32px native, upscaled). Frame unwraps on mobile.
+  9. **Mobile tree = fill height, horizontal pan, NO vertical scroll** — canvas `height:100%; width:auto`
+     (inline-block in a block scroll container so aspect-ratio drives width reliably; flex mangled it). The
+     mobile rule must live AFTER the base `.skilltree-canvas` (media queries add no specificity).
+  10. **Connectors = rounded elbows, branch topology** — off-row modifiers are an offshoot of the base's
+     horizontal spine: run along the spine to the midpoint between base & modifier columns, rounded turn,
+     into the modifier's LEFT edge (e.g. Tremor branches midway between Forcewave "1" and its "5").
+  11. **Game-accurate skill tooltips** (hover desktop / tap mobile) — composition verified vs decompiled
+     `GenerateUISkillText @ 0x102645e0`: name · `<Mastery> · <Type> · Requires Mastery N · Modifies <base>`
+     · rank · description (format codes cleaned: `^o`=break+orange note, `{^n}` breaks, `{%…}` value tokens
+     dropped) · mechanical block (energy/cooldown/duration/weapon%/radius) · effect stats ordered by
+     labels.json `cat` (skill→offense→dot→resist→cc) each with a next-rank `→`. `kind` (from record `Class`)
+     + `exclusive` added to build-data. Tooltip: interactive+scrollable (62vh mobile cap), tap-off dismiss,
+     placed in the larger gap above/below the node so it never covers the icon. Double-tap detail overlay
+     REMOVED. (Bug fixed: fmtDesc used invisible `\x01` markers → corrupted capital A/B; now `@@BR@@`.)
+  12. **Dual-mastery synergy edges** — `skilltree.edges[pair]` (numeric-sorted cid key "12"/"110"): per
+     shared damage type, per-mastery `{deal,buff}` counts (magnitude). Per skill: `deals` (outputs a type)
+     vs `buffs` (**global** amplifiers). **Edge = a type BOTH masteries HAVE (deal OR buff)** — gear affixes
+     then benefit both. Dropdown (off / all / a specific type w/ magnitude) focuses one edge; DEALERS ring
+     cyan, AMPLIFIERS ring purple, rest dim. Tooltip states deals-vs-amplifies + per-mastery counts.
+     **Local/global fix**: a `+n% X Damage` modifier is GLOBAL only on a character-wide buff
+     (Passive/Buff/Toggle); on an active attack or transmuter/modifier it's LOCAL (scales that skill only,
+     e.g. Fire Strike's %Physical) → counts as DEALING, not amplifying. RR is always global (enemy debuff).
+     `skillEdge(scaling, kind)` gates on kind; global amps 86→35.
