@@ -555,6 +555,9 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
   .st-layout { flex-direction: column; } .st-rail { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: none; }
   .devo-layout { flex-direction: column; } .devo-info { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 42%; }
   .mb-bar { grid-template-columns: repeat(25, 1fr); }
+  /* compact tooltip on phones so it reads as a small box beside/below the node, not a full-screen overlay */
+  .st-tooltip:not(.st-tooltip-detail) { width: 290px; max-width: 84vw; max-height: 46vh; font-size: .78rem; padding: .55rem .65rem; }
+  .st-tooltip:not(.st-tooltip-detail) .tip-head { font-size: .95rem; }
   /* block scroll container: horizontal pan only, no vertical scroll; left-anchored so the
      class art at x:0 shows first. (This block is AFTER the base .skilltree-canvas rule, so
      the mobile width:auto below actually wins the cascade.) */
