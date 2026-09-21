@@ -942,22 +942,40 @@
       ${eff.length ? `<ul class="tip-stats">${eff.map(line).join("")}</ul>` : ""}`;
   }
 
-  // floating hover tooltip (desktop); mobile uses the detail overlay below
+  // floating hover tooltip — ONLY on true hover/fine-pointer devices. Touch synthesises
+  // mouseover on tap, so on phones we skip this entirely (the tooltip is reachable via the
+  // double-tap detail overlay) — otherwise it would pop up as a full-screen overlay on tap.
+  const canHover = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   let tipEl = null;
   function showTip(nodeEl) {
+    if (!canHover()) return;
     const path = nodeEl.dataset.skill; const info = path && nodeByPath.get(path);
     if (!info) return;
     if (!tipEl) { tipEl = document.createElement("div"); tipEl.className = "st-tooltip"; document.body.appendChild(tipEl); }
     tipEl.innerHTML = buildTooltipHTML(info.node, info.cid, state.skills[path] || 0);
     tipEl.style.display = "block";
-    const r = nodeEl.getBoundingClientRect(), tw = tipEl.offsetWidth, th = tipEl.offsetHeight, m = 10;
-    let x = r.right + m; if (x + tw > innerWidth - 8) x = r.left - tw - m; if (x < 8) x = 8;
-    let y = r.top - 4; if (y + th > innerHeight - 8) y = innerHeight - th - 8; if (y < 8) y = 8;
+    const r = nodeEl.getBoundingClientRect(), tw = tipEl.offsetWidth, th = tipEl.offsetHeight, gap = 14;
+    // place beside the node without covering it: right, else left, else drop below
+    let x = r.right + gap, y = r.top - 4;
+    if (x + tw > innerWidth - 8) {
+      const lx = r.left - tw - gap;
+      if (lx >= 8) x = lx;                         // fits on the left
+      else { x = Math.min(Math.max(8, r.left), innerWidth - tw - 8); y = r.bottom + gap; }  // below instead
+    }
+    x = Math.max(8, Math.min(x, innerWidth - tw - 8));
+    y = Math.max(8, Math.min(y, innerHeight - th - 8));
     tipEl.style.left = x + "px"; tipEl.style.top = y + "px";
   }
-  function hideTip() { if (tipEl) tipEl.style.display = "none"; }
-  document.addEventListener("mouseover", (e) => { const nd = e.target.closest?.(".st-node"); if (nd && nd.dataset.skill) showTip(nd); });
+  let tipTimer = null;
+  function hideTip() { clearTimeout(tipTimer); if (tipEl) tipEl.style.display = "none"; }
+  // show only after a short deliberate hover, so click-spamming to allocate points never
+  // triggers the tooltip; any click (allocation) hides it immediately.
+  document.addEventListener("mouseover", (e) => {
+    const nd = e.target.closest?.(".st-node");
+    if (nd && nd.dataset.skill && canHover()) { clearTimeout(tipTimer); tipTimer = setTimeout(() => showTip(nd), 350); }
+  });
   document.addEventListener("mouseout", (e) => { const nd = e.target.closest?.(".st-node"); if (nd && !nd.contains(e.relatedTarget)) hideTip(); });
+  document.addEventListener("mousedown", hideTip);
   document.addEventListener("scroll", hideTip, true);
 
   function openSkillNodeDetail(path) {
