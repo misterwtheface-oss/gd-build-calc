@@ -965,16 +965,25 @@
     tipPath = path; clearHide();
     const el = ensureTip();
     el.innerHTML = buildTooltipHTML(info.node, info.cid, state.skills[path] || 0);
-    el.style.display = "block"; el.scrollTop = 0;
-    const r = nodeEl.getBoundingClientRect(), tw = el.offsetWidth, th = el.offsetHeight, gap = 12;
-    let x = r.right + gap, y = r.top - 4;
-    if (x + tw > innerWidth - 8) {
+    el.style.display = "block"; el.scrollTop = 0; el.style.maxHeight = "";
+    const r = nodeEl.getBoundingClientRect(), gap = 12;
+    let tw = el.offsetWidth, x = r.right + gap, y = r.top - 4, beside = true;
+    if (x + tw > innerWidth - 8) {                    // no room on the right
       const lx = r.left - tw - gap;
-      if (lx >= 8) x = lx;                         // fits on the left
-      else { x = Math.max(8, Math.min(r.left, innerWidth - tw - 8)); y = r.bottom + gap; }  // drop below
+      if (lx >= 8) x = lx;                            // fits on the left
+      else beside = false;                            // neither side fits (typical on phones)
     }
-    x = Math.max(8, Math.min(x, innerWidth - tw - 8));
-    y = Math.max(8, Math.min(y, innerHeight - th - 8));
+    if (beside) {
+      x = Math.max(8, Math.min(x, innerWidth - tw - 8));
+      y = Math.max(8, Math.min(y, innerHeight - el.offsetHeight - 8));
+    } else {
+      // put it in the taller gap (above or below the node) and CAP its height to that gap so it
+      // can never clamp back over the icon
+      const below = innerHeight - r.bottom - gap - 8, above = r.top - gap - 8;
+      x = Math.max(8, Math.min(r.left, innerWidth - tw - 8));
+      if (below >= above) { el.style.maxHeight = below + "px"; y = r.bottom + gap; }
+      else { el.style.maxHeight = above + "px"; y = r.top - gap - Math.min(el.offsetHeight, above); }
+    }
     el.style.left = x + "px"; el.style.top = y + "px";
   }
   function hideTip() { clearHide(); tipPath = null; if (tipEl) tipEl.style.display = "none"; }
