@@ -898,13 +898,13 @@
     if (!raw) return "";
     let s = String(raw)
       .replace(/\{%[^}]*\}/g, "")
-      .replace(/\{\^n\}|\^n/g, "B")
-      .replace(/\^o/g, "BA")
+      .replace(/\{\^n\}|\^n/g, "@@BR@@")
+      .replace(/\^o/g, "@@BR@@@@NOTE@@")
       .replace(/\[ms\]([^\[]*)\[fs\][^~\]]*/g, "$1")
       .replace(/\{\^[A-Za-z-]\}|\^[A-Za-z]/g, "")
       .replace(/[{}]/g, "")
       .trim();
-    s = esc(s).replace(/B/g, "<br>").replace(/A/g, '<span class="tip-note">');
+    s = esc(s).replace(/@@BR@@/g, "<br>").replace(/@@NOTE@@/g, '<span class="tip-note">');
     if (s.includes("tip-note")) s += "</span>";
     return s;
   }
@@ -944,17 +944,29 @@
   }
 
   // floating tooltip — on hover (desktop) and tap (mobile). Positioned BESIDE the node
-  // (right → left → below) so it never covers the button, and sized compact so it never
-  // fills the screen. CSS pointer-events:none lets taps/clicks pass straight through.
-  let tipEl = null, tipPath = null;
+  // (right → left → below) so it never covers the button; it's interactive (pointer-events
+  // auto) so its own overflow can be scrolled. Dismissed by leaving the node/tooltip
+  // (desktop) or tapping off any node (mobile).
+  let tipEl = null, tipPath = null, tipHideT = null;
+  const clearHide = () => clearTimeout(tipHideT);
+  const scheduleHide = () => { clearHide(); tipHideT = setTimeout(hideTip, 160); };
+  function ensureTip() {
+    if (!tipEl) {
+      tipEl = document.createElement("div"); tipEl.className = "st-tooltip";
+      tipEl.addEventListener("mouseenter", clearHide);   // hovering the tooltip keeps it open (to scroll)
+      tipEl.addEventListener("mouseleave", scheduleHide);
+      document.body.appendChild(tipEl);
+    }
+    return tipEl;
+  }
   function showTip(nodeEl) {
     const path = nodeEl.dataset.skill; const info = path && nodeByPath.get(path);
     if (!info) return;
-    tipPath = path;
-    if (!tipEl) { tipEl = document.createElement("div"); tipEl.className = "st-tooltip"; document.body.appendChild(tipEl); }
-    tipEl.innerHTML = buildTooltipHTML(info.node, info.cid, state.skills[path] || 0);
-    tipEl.style.display = "block";
-    const r = nodeEl.getBoundingClientRect(), tw = tipEl.offsetWidth, th = tipEl.offsetHeight, gap = 12;
+    tipPath = path; clearHide();
+    const el = ensureTip();
+    el.innerHTML = buildTooltipHTML(info.node, info.cid, state.skills[path] || 0);
+    el.style.display = "block"; el.scrollTop = 0;
+    const r = nodeEl.getBoundingClientRect(), tw = el.offsetWidth, th = el.offsetHeight, gap = 12;
     let x = r.right + gap, y = r.top - 4;
     if (x + tw > innerWidth - 8) {
       const lx = r.left - tw - gap;
@@ -963,18 +975,22 @@
     }
     x = Math.max(8, Math.min(x, innerWidth - tw - 8));
     y = Math.max(8, Math.min(y, innerHeight - th - 8));
-    tipEl.style.left = x + "px"; tipEl.style.top = y + "px";
+    el.style.left = x + "px"; el.style.top = y + "px";
   }
-  function hideTip() { tipPath = null; if (tipEl) tipEl.style.display = "none"; }
+  function hideTip() { clearHide(); tipPath = null; if (tipEl) tipEl.style.display = "none"; }
   // after the tree re-renders (a point was allocated) keep the open tooltip in sync
   function refreshTip() {
     if (!tipPath || !tipEl || tipEl.style.display === "none") return;
     const nd = document.querySelector(`#overlay-root .st-node[data-skill="${tipPath}"]`);
     if (nd) showTip(nd); else hideTip();
   }
+  const hoverCapable = () => window.matchMedia("(hover: hover)").matches;
   document.addEventListener("mouseover", (e) => { const nd = e.target.closest?.(".st-node"); if (nd && nd.dataset.skill) showTip(nd); });
-  document.addEventListener("mouseout", (e) => { const nd = e.target.closest?.(".st-node"); if (nd && !nd.contains(e.relatedTarget)) hideTip(); });
-  document.addEventListener("scroll", hideTip, true);
+  document.addEventListener("mouseout", (e) => { if (!hoverCapable()) return; const nd = e.target.closest?.(".st-node"); if (nd && !nd.contains(e.relatedTarget)) scheduleHide(); });
+  // tapping/clicking off any node (and not on the tooltip itself) drops the tooltip
+  document.addEventListener("pointerdown", (e) => { if (!e.target.closest?.(".st-node") && !e.target.closest?.(".st-tooltip")) hideTip(); });
+  // hide when the TREE is panned, but not when scrolling inside the tooltip
+  document.addEventListener("scroll", (e) => { if (!e.target.closest?.(".st-tooltip")) hideTip(); }, true);
 
   function openSkillNodeDetail(path) {
     const info = nodeByPath.get(path); if (!info) return;
