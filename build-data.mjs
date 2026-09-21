@@ -367,11 +367,22 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
         if (base) { requires = base.n.skill; stModRes++; }
       }
       const ranks = N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1;
+      // classify from the record Class (drives the tooltip's type subtitle)
+      const rc = String(sRec.Class || rec.Class || "");
+      const kind = /Passive/.test(rc) ? "Passive"
+        : /Transmuter/.test(rc) ? "Transmuter"
+        : /Modifier/.test(rc) ? "Modifier"
+        : /Toggled/.test(rc) ? "Toggle"
+        : /(Buff|Aura)/.test(rc) ? "Buff"
+        : /(Attack|WeaponPool|WPAttack)/.test(rc) ? "Active"
+        : "";
       return {
         skill: n.skill,
         name: n.name || sRec.name || rec.name || null,
         icon, x: n.x, y: n.y, circular: !!n.circular, masteryBar: !!n.masteryBar,
         tier: N(sRec.skillTier) || 1,
+        kind,
+        exclusive: N(sRec.exclusiveSkill) === 1 || undefined,
         maxLevel: N(sRec.skillMaxLevel) || (n.masteryBar ? barMax : 1),
         ultimateLevel: N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1,
         requires,

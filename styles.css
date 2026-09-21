@@ -436,6 +436,28 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
   background: linear-gradient(to top, rgba(235,205,130,.9), rgba(235,205,130,.28) 55%, rgba(235,205,130,0) 92%);
   filter: blur(1px); mix-blend-mode: screen; }
 .st-ray.on { opacity: 1; }
+
+/* ── skill tooltip (game-accurate) ─────────────────────────────────────── */
+.st-tooltip { position: fixed; z-index: 300; display: none; width: 330px; max-width: 92vw; max-height: 80vh;
+  overflow-y: auto; background: linear-gradient(180deg, #14110c, #0a0805); border: 1px solid var(--border-hi);
+  border-radius: 8px; box-shadow: 0 10px 34px rgba(0,0,0,.85); padding: .7rem .85rem; pointer-events: none;
+  font-size: .82rem; line-height: 1.42; }
+.tip-head { font-size: 1.05rem; font-weight: 700; color: var(--gold); text-shadow: 0 1px 2px #000; }
+.tip-sub { font-size: .71rem; color: var(--text-muted); margin-bottom: .3rem; }
+.tip-rank { font-size: .74rem; color: var(--text-dim); margin-bottom: .35rem; }
+.tip-rank b { color: var(--gold); }
+.tip-desc { font-size: .82rem; color: #c9bfa6; font-style: italic; margin: .35rem 0; }
+.tip-note { color: #d8a24a; font-style: normal; }
+.tip-stats { list-style: none; margin: .4rem 0 0; padding: 0; }
+.tip-stats li { padding: 1px 0; color: #bfe0a0; }
+.tip-stats.tip-mech { margin-top: .3rem; }
+.tip-stats.tip-mech li { color: #c9bfa6; }
+.tip-stats b { color: #e7f4d4; font-weight: 700; }
+.tip-mech b { color: #f3e6c4; }
+.tip-next { color: var(--text-dim); font-weight: 400; }
+/* inside the mobile detail overlay: drop the floating chrome, flow inline */
+.st-tooltip-detail { position: static; display: block; width: auto; max-width: none; max-height: none;
+  border: none; box-shadow: none; background: none; padding: 0; pointer-events: auto; }
 /* per-mastery backdrop: the game's skillallocation mastery art, drawn crisp at its native box
    (left-anchored, ~640/983 wide, full height) exactly as the in-game skill window composites it.
    The art carries its own right-side alpha fade, so no opacity/cover hacks — it blends over the

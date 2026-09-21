@@ -883,27 +883,86 @@
       : `<p class="muted">No equipped pieces carry this type.</p>`;
     renderDetail(esc(t.name), `<div class="primary-traits">${traitBanner(t)}</div><p>${esc(t.blurb || "")}</p>${usersHtml}`);
   }
+  // ── skill tooltip (game-accurate composition) ─────────────────────────────
+  // hide raw internals that never appear on a tooltip
+  const TIP_HIDE = new Set(["skillMaxLevel", "skillTier", "skillUltimateLevel", "skillChargeTime",
+    "skillChargeDuration", "skillChargeTimeRanged", "excludeRacialDamage", "instantCast",
+    "skillManaCostReduction", "skillCooldownReduction", "projectileLaunchNumber", "skillChargeLevel"]);
+  // the game emits one fixed stat order; labels.json `cat` approximates it (mechanical → offense → …)
+  const TIP_CAT = { skill: 0, offense: 1, dot: 2, resist: 3, cc: 4, conversion: 5, defense: 6, support: 7, misc: 8, auto: 9 };
+
+  // clean the in-game format codes: {^n}/^n = break, ^o = break + accent note, {%…} value tokens
+  // are dropped (already substituted in our data), colour spans stripped, [ms]/[fs] → male form.
+  function fmtDesc(raw) {
+    if (!raw) return "";
+    let s = String(raw)
+      .replace(/\{%[^}]*\}/g, "")
+      .replace(/\{\^n\}|\^n/g, "B")
+      .replace(/\^o/g, "BA")
+      .replace(/\[ms\]([^\[]*)\[fs\][^~\]]*/g, "$1")
+      .replace(/\{\^[A-Za-z-]\}|\^[A-Za-z]/g, "")
+      .replace(/[{}]/g, "")
+      .trim();
+    s = esc(s).replace(/B/g, "<br>").replace(/A/g, '<span class="tip-note">');
+    if (s.includes("tip-note")) s += "</span>";
+    return s;
+  }
+  // tidy a stat label: drop trailing "%"/"(%)", the internal " Min/Max" split, and a leading
+  // "Offensive " on the auto-generated labels
+  const tipName = (n) => n.replace(/\s*\(%\)$/, "").replace(/\s*%$/, "").replace(/^Offensive\s+/i, "").replace(/\s+(Min|Max)$/, "");
+  const tipUnit = (conv) => conv === "percent" ? "%" : conv === "seconds" ? "s" : "";
+  // one stat line, game style: "130% Weapon Damage", "24 Physical Damage", "+45% Physical Damage"
+  function tipStat(sc, v) {
+    const nm = tipName(sc.name);
+    if (v == null) return esc(nm);
+    const mod = /Modifier$/.test(sc.field) || /modifier/i.test(sc.name);
+    const sign = v > 0 && mod ? "+" : "";
+    return `<b>${sign}${v}${tipUnit(sc.conv)}</b> ${esc(nm)}`;
+  }
+  function buildTooltipHTML(node, cid, rank) {
+    const cname = ST.classes[cid]?.name || "";
+    const tierReq = TIER_LEVELS[node.tier - 1] || 1;
+    const type = node.kind || (node.circular ? "Modifier" : "Skill");
+    const baseName = node.requires ? nodeByPath.get(node.requires)?.node?.name : null;
+    const valAt = (sc, r) => sc.scalar ? sc.values[0] : sc.values[Math.min(Math.max(r, 1), sc.values.length) - 1];
+    const stats = (node.scaling || []).filter((sc) => !TIP_HIDE.has(sc.field) && sc.conv !== "flag")
+      .sort((a, b) => (TIP_CAT[a.cat] ?? 8) - (TIP_CAT[b.cat] ?? 8));
+    const line = (sc) => {
+      const cur = valAt(sc, rank > 0 ? rank : 1);
+      const nxt = rank > 0 && rank < node.maxLevel && !sc.scalar ? valAt(sc, rank + 1) : null;
+      return `<li>${tipStat(sc, cur)}${nxt != null && nxt !== cur ? ` <span class="tip-next">→ ${esc(String(nxt) + tipUnit(sc.conv))}</span>` : ""}</li>`;
+    };
+    const mech = stats.filter((s) => s.cat === "skill"), eff = stats.filter((s) => s.cat !== "skill");
+    return `<div class="tip-head">${esc(node.name || "")}</div>
+      <div class="tip-sub">${esc(cname)} · ${esc(type)} · Requires Mastery ${tierReq}${baseName ? ` · Modifies ${esc(baseName)}` : ""}</div>
+      <div class="tip-rank">Rank <b>${rank}</b> / ${node.maxLevel}${node.ultimateLevel > node.maxLevel ? ` <span class="muted">(${node.ultimateLevel} w/ +skills)</span>` : ""}</div>
+      ${node.exclusive ? `<div class="tip-note">Exclusive Skill — only one may be active at a time</div>` : ""}
+      ${node.desc ? `<p class="tip-desc">${fmtDesc(node.desc)}</p>` : ""}
+      ${mech.length ? `<ul class="tip-stats tip-mech">${mech.map(line).join("")}</ul>` : ""}
+      ${eff.length ? `<ul class="tip-stats">${eff.map(line).join("")}</ul>` : ""}`;
+  }
+
+  // floating hover tooltip (desktop); mobile uses the detail overlay below
+  let tipEl = null;
+  function showTip(nodeEl) {
+    const path = nodeEl.dataset.skill; const info = path && nodeByPath.get(path);
+    if (!info) return;
+    if (!tipEl) { tipEl = document.createElement("div"); tipEl.className = "st-tooltip"; document.body.appendChild(tipEl); }
+    tipEl.innerHTML = buildTooltipHTML(info.node, info.cid, state.skills[path] || 0);
+    tipEl.style.display = "block";
+    const r = nodeEl.getBoundingClientRect(), tw = tipEl.offsetWidth, th = tipEl.offsetHeight, m = 10;
+    let x = r.right + m; if (x + tw > innerWidth - 8) x = r.left - tw - m; if (x < 8) x = 8;
+    let y = r.top - 4; if (y + th > innerHeight - 8) y = innerHeight - th - 8; if (y < 8) y = 8;
+    tipEl.style.left = x + "px"; tipEl.style.top = y + "px";
+  }
+  function hideTip() { if (tipEl) tipEl.style.display = "none"; }
+  document.addEventListener("mouseover", (e) => { const nd = e.target.closest?.(".st-node"); if (nd && nd.dataset.skill) showTip(nd); });
+  document.addEventListener("mouseout", (e) => { const nd = e.target.closest?.(".st-node"); if (nd && !nd.contains(e.relatedTarget)) hideTip(); });
+  document.addEventListener("scroll", hideTip, true);
+
   function openSkillNodeDetail(path) {
     const info = nodeByPath.get(path); if (!info) return;
-    const { cid, node } = info;
-    const rank = state.skills[path] || 0;
-    const cname = ST.classes[cid]?.name || "";
-    const tierReq = TIER_LEVELS[node.tier - 1];
-    const baseName = node.requires ? nodeByPath.get(node.requires)?.node?.name : null;
-    const scHTML = (node.scaling || []).map((sc) => {
-      const cur = rank > 0 ? (sc.scalar ? sc.values[0] : sc.values[rank - 1]) : null;
-      const nxt = sc.scalar ? sc.values[0] : sc.values[Math.min(rank, sc.values.length - 1)];
-      return `<li><span class="sc-name">${esc(sc.name)}</span>
-        <span class="sc-val">${rank > 0 ? esc(fmtVal(cur, sc.conv)) : "—"}${rank < node.maxLevel ? ` <span class="sc-next">→ ${esc(fmtVal(nxt, sc.conv))}</span>` : ""}</span></li>`;
-    }).join("");
-    renderDetail(esc(node.name), `
-      <div class="detail-sub muted">${esc(cname)} · Tier ${node.tier} (mastery ${tierReq}+)${node.circular ? " · modifier" : ""}</div>
-      <div class="sk-meta">
-        <span class="sk-rank">Rank <b>${rank}</b> / ${node.maxLevel}${node.ultimateLevel > node.maxLevel ? ` <span class="muted">(${node.ultimateLevel} w/ +skills)</span>` : ""}</span>
-        ${baseName ? `<span class="muted">Requires: ${esc(baseName)}</span>` : ""}
-      </div>
-      ${node.desc ? `<p class="sk-desc">${esc(node.desc)}</p>` : ""}
-      ${scHTML ? `<h3>Per-rank stats</h3><ul class="sk-scaling">${scHTML}</ul>` : ""}`);
+    renderDetail(esc(info.node.name || ""), `<div class="st-tooltip st-tooltip-detail">${buildTooltipHTML(info.node, info.cid, state.skills[path] || 0)}</div>`);
   }
   function renderDetail(title, bodyHtml) {
     const root = document.getElementById("detail-overlay-root");
