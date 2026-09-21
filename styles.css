@@ -456,9 +456,6 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 .tip-stats b { color: #e7f4d4; font-weight: 700; }
 .tip-mech b { color: #f3e6c4; }
 .tip-next { color: var(--text-dim); font-weight: 400; }
-/* inside the mobile detail overlay: drop the floating chrome, flow inline */
-.st-tooltip-detail { position: static; display: block; width: auto; max-width: none; max-height: none;
-  border: none; box-shadow: none; background: none; padding: 0; pointer-events: auto; }
 /* per-mastery backdrop: the game's skillallocation mastery art, drawn crisp at its native box
    (left-anchored, ~640/983 wide, full height) exactly as the in-game skill window composites it.
    The art carries its own right-side alpha fade, so no opacity/cover hacks — it blends over the
@@ -558,8 +555,8 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
   .mb-bar { grid-template-columns: repeat(25, 1fr); }
   /* compact tooltip on phones so it reads as a box beside/below the node, not a full-screen
      overlay; scrolls when the content is taller than the cap */
-  .st-tooltip:not(.st-tooltip-detail) { width: 290px; max-width: 84vw; max-height: 62vh; font-size: .78rem; padding: .55rem .65rem; }
-  .st-tooltip:not(.st-tooltip-detail) .tip-head { font-size: .95rem; }
+  .st-tooltip { width: 290px; max-width: 84vw; max-height: 62vh; font-size: .78rem; padding: .55rem .65rem; }
+  .st-tooltip .tip-head { font-size: .95rem; }
   /* block scroll container: horizontal pan only, no vertical scroll; left-anchored so the
      class art at x:0 shows first. (This block is AFTER the base .skilltree-canvas rule, so
      the mobile width:auto below actually wins the cascade.) */

@@ -992,10 +992,6 @@
   // hide when the TREE is panned, but not when scrolling inside the tooltip
   document.addEventListener("scroll", (e) => { if (!e.target.closest?.(".st-tooltip")) hideTip(); }, true);
 
-  function openSkillNodeDetail(path) {
-    const info = nodeByPath.get(path); if (!info) return;
-    renderDetail(esc(info.node.name || ""), `<div class="st-tooltip st-tooltip-detail">${buildTooltipHTML(info.node, info.cid, state.skills[path] || 0)}</div>`);
-  }
   function renderDetail(title, bodyHtml) {
     const root = document.getElementById("detail-overlay-root");
     root.innerHTML = `
@@ -1057,8 +1053,8 @@
       case "st-choose": if (el.dataset.cid) chooseMastery(el.dataset.cid); break;
       case "st-remove": removeMastery(el.dataset.cid); break;
       case "st-node":
+        // click/tap = +1 rank, shift/right-click = −1; info lives in the hover/tap tooltip
         if (e.shiftKey) allocSkill(el.dataset.skill, -1);
-        else if (e.detail === 2) openSkillNodeDetail(el.dataset.skill);  // dbl-click = info
         else allocSkill(el.dataset.skill, +1);
         break;
       case "mb-inc": setMasteryBar(el.dataset.cid, masteryLevel(el.dataset.cid) + 1); break;
