@@ -588,21 +588,21 @@
     // modifier (collapses to a straight run when they share a row/column). The join lights up
     // (gold) once the prerequisite point is invested AND the mastery tier is unlocked.
     const ccx = (n) => n.x + bw / 2, ccy = (n) => n.y + bh / 2;
-    // vertical out of the base, a rounded quarter-turn, then horizontal INTO the modifier's
-    // left edge — so the connector always enters the icon from its left. Collapses to a straight
-    // run when base + modifier share a row/column.
-    const elbow = (x1, y1, x2, y2) => {
-      const dx = x2 - x1, dy = y2 - y1;
-      if (Math.abs(dy) < 2 || Math.abs(dx) < 2) return `M${x1},${y1} L${x2},${y2}`;
-      const sx = Math.sign(dx), sy = Math.sign(dy);
-      const r = Math.min(14, Math.abs(dx), Math.abs(dy));
-      return `M${x1},${y1} V${y2 - sy * r} Q${x1},${y2} ${x1 + sx * r},${y2} H${x2}`;
+    // An off-row modifier is an OFFSHOOT of its base's horizontal spine: run along the spine to
+    // the midpoint between base and modifier (e.g. Tremor branches midway between Forcewave "1"
+    // and its own "5" column), a rounded turn, drop to the modifier's row, another rounded turn,
+    // then horizontal INTO the modifier's left edge. Same-row modifiers are a straight run.
+    const branch = (bx, by, mcx, mleft, my) => {
+      const dy = my - by;
+      if (Math.abs(dy) < 2 || mcx <= bx) return `M${bx},${by} L${mleft},${my}`;
+      const midX = (bx + mcx) / 2, sy = Math.sign(dy);
+      const r = Math.max(2, Math.min(9, Math.abs(dy) / 2, mleft - midX));
+      return `M${bx},${by} H${midX - r} Q${midX},${by} ${midX},${by + sy * r} V${my - sy * r} Q${midX},${my} ${midX + r},${my} H${mleft}`;
     };
     const links = named.filter((n) => n.requires && bySkill.has(n.requires)).map((n) => {
       const p = bySkill.get(n.requires);
       const on = (state.skills[n.requires] > 0) && tierUnlocked(cid, n.tier);
-      // end at the modifier's LEFT-edge midpoint (n.x, vertical centre)
-      return `<path class="st-link ${on ? "on" : ""}" d="${elbow(ccx(p), ccy(p), n.x, ccy(n))}" fill="none" vector-effect="non-scaling-stroke" />`;
+      return `<path class="st-link ${on ? "on" : ""}" d="${branch(ccx(p), ccy(p), ccx(n), n.x, ccy(n))}" fill="none" vector-effect="non-scaling-stroke" />`;
     }).join("");
     const linksSVG = links
       ? `<svg class="st-links" viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" aria-hidden="true">${links}</svg>`
