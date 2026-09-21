@@ -457,11 +457,13 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 .tip-mech b { color: #f3e6c4; }
 .tip-next { color: var(--text-dim); font-weight: 400; }
 /* synergy "why + magnitude" block in the tooltip */
-.tip-syn { margin-top: .5rem; padding-top: .45rem; border-top: 1px solid rgba(79,214,224,.35); }
-.tip-syn-head { font-size: .76rem; font-weight: 700; color: #7fe3ec; margin-bottom: .2rem; }
+.tip-syn { margin-top: .5rem; padding-top: .45rem; border-top: 1px solid rgba(199,125,255,.35); }
+.tip-syn-head { font-size: .76rem; font-weight: 700; color: #d7b3ff; margin-bottom: .2rem; }
 .tip-syn-list { list-style: none; margin: 0; padding: 0; }
-.tip-syn-list li { padding: 2px 0; color: #d7f4f7; }
-.tip-syn-score { display: inline-block; font-size: .68rem; font-weight: 700; color: #0a1416; background: #4fd6e0;
+.tip-syn-list li { padding: 2px 0; color: #e7e0f2; }
+.tip-syn-amp { color: #c77dff; font-weight: 700; }   /* amplifier */
+.tip-syn-deal { color: #4fd6e0; font-weight: 700; }  /* dealer */
+.tip-syn-score { display: inline-block; font-size: .68rem; font-weight: 700; color: #14101c; background: #b98cff;
   border-radius: 999px; padding: 0 .4rem; vertical-align: middle; }
 /* per-mastery backdrop: the game's skillallocation mastery art, drawn crisp at its native box
    (left-anchored, ~640/983 wide, full height) exactly as the in-game skill window composites it.
@@ -487,14 +489,15 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 .st-node.allocated { box-shadow: 0 0 0 2px var(--gold), 0 0 8px rgba(216,178,74,.6); z-index: 3; }
 .st-node.maxed { box-shadow: 0 0 0 2px #6fce6f, 0 0 8px rgba(111,206,111,.55); }
 
-/* dual-mastery shared-edge highlight: dim skills that don't share a damage type with the other
-   mastery, ring the ones that do (teal — distinct from gold=allocated / green=maxed) */
-.st-synergy { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
-  padding: .3rem .6rem; border-radius: 5px; font-size: .78rem; white-space: nowrap; }
-.st-synergy:hover { border-color: var(--border-hi); color: var(--text); }
-.st-synergy.on { background: rgba(38,120,130,.5); color: #d7f4f7; border-color: #4fd6e0; }
-.skilltree-canvas.synergy .st-node:not(.edge) { opacity: .26; filter: grayscale(.55); }
-.skilltree-canvas.synergy .st-node.edge { box-shadow: 0 0 0 2px #4fd6e0, 0 0 12px rgba(79,214,224,.7); z-index: 3; }
+/* dual-mastery shared-edge highlight: focus a shared damage type, dim the rest, and colour
+   AMPLIFIERS (buff the type: purple) vs DEALERS (deal the type: cyan) differently */
+.st-edgesel { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+  padding: .28rem .5rem; border-radius: 5px; font-size: .78rem; max-width: 12rem; }
+.st-edgesel:hover { border-color: var(--border-hi); color: var(--text); }
+.st-edgesel.on { background: rgba(60,50,90,.5); color: #ecdcff; border-color: #c77dff; }
+.skilltree-canvas.synergy .st-node:not(.edge-amp):not(.edge-deal) { opacity: .24; filter: grayscale(.6); }
+.skilltree-canvas.synergy .st-node.edge-deal { box-shadow: 0 0 0 2px #4fd6e0, 0 0 12px rgba(79,214,224,.7); z-index: 3; }
+.skilltree-canvas.synergy .st-node.edge-amp { box-shadow: 0 0 0 2px #c77dff, 0 0 13px rgba(199,125,255,.8); z-index: 4; }
 .st-rank { position: absolute; bottom: -6px; right: -6px; background: var(--surface2); border: 1px solid var(--border-hi);
   color: var(--gold); font-size: .58rem; font-weight: 700; line-height: 1; padding: 1px 3px; border-radius: 6px; pointer-events: none; }
 .st-node.maxed .st-rank { border-color: #6fce6f; color: #6fce6f; }

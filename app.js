@@ -61,22 +61,22 @@
     ovl: null,                // item selector
     skill: null,              // { cid } skill-tree overlay
     devo: null,               // { z, sel } devotion overlay
-    synergy: false,           // highlight shared damage-type edge between the two masteries
+    edge: "off",              // synergy focus: "off" | "all" | <damage-type key>
   };
 
-  // the datamine's synergy edge for the two selected masteries (null unless 2 selected + shared)
+  // the shared damage-type edges for the two selected masteries (null unless 2 selected + shared)
   function currentEdge() {
     if (state.masteries.length !== 2) return null;
-    const key = state.masteries.map((c) => String(Number(c)).padStart(2, "0")).sort().join("");
+    const key = state.masteries.map((c) => Number(c)).sort((a, b) => a - b).join("");
     const e = (ST.edges || {})[key];
     return e && e.shared && e.shared.length ? e : null;
   }
-  // damage-type keys of the shared edge (Elemental expands to F/C/L so per-type skills still match)
-  function sharedEdgeTypes() {
-    const e = currentEdge(); if (!e) return null;
-    const s = new Set();
-    for (const d of e.shared) { s.add(d.key); if (d.key === "Elemental") { s.add("Fire"); s.add("Cold"); s.add("Lightning"); } }
-    return s.size ? s : null;
+  // the damage-type keys currently focused (null = off); "all" = every shared type, else the one picked
+  function selectedEdgeTypes() {
+    const e = currentEdge(); if (!e || state.edge === "off") return null;
+    const all = e.shared.map((d) => d.type);
+    if (state.edge !== "all" && all.includes(state.edge)) return new Set([state.edge]);
+    return new Set(all);
   }
   Object.assign(state, load());
   for (const s of DATA.slots || []) if (!(s.id in state.build)) state.build[s.id] = null;
@@ -510,10 +510,15 @@
     }
     const spAvail = skillPointsAvailable(), spUsed = skillPointsUsed();
     slots.push(`<span class="st-points ${spUsed > spAvail ? "over" : ""}">Skill Points <b>${spUsed}</b> / ${spAvail}</span>`);
-    // synergy toggle: only when two masteries share a damage-type edge; shows the combo + score
+    // synergy edge dropdown: pick a shared damage type to focus (only with 2 masteries sharing one)
     const e = currentEdge();
-    if (e) slots.push(`<button class="st-synergy ${state.synergy ? "on" : ""}" data-action="st-synergy"
-      title="Highlight the shared damage-type edge — ${esc(e.shared.map((d) => `${d.type} ×${d.score}`).join(", "))}">⚡ Synergy${e.combo ? ` · ${esc(e.combo)} ${e.score}` : ""}</button>`);
+    if (e) {
+      const opt = (v, label, on) => `<option value="${esc(v)}" ${state.edge === v ? "selected" : ""}>${esc(label)}</option>`;
+      const typeOpts = e.shared.map((d) => opt(d.type, `${d.type} (${d.score})`)).join("");
+      slots.push(`<select class="st-edgesel ${state.edge !== "off" ? "on" : ""}" data-role="edge" aria-label="Synergy edge"
+        title="Highlight a shared damage-type edge${e.combo ? ` — ${esc(e.combo)}` : ""}">
+        ${opt("off", "⚡ Synergy: off")}${opt("all", "⚡ All shared edges")}${typeOpts}</select>`);
+    }
     return slots.join("");
   }
   function renderSkillTree() {
@@ -628,13 +633,16 @@
       ? `<svg class="st-links" viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" aria-hidden="true">${links}</svg>`
       : "";
 
-    const shared = state.synergy ? sharedEdgeTypes() : null;
+    const sel = selectedEdgeTypes();   // Set of focused damage types (null = synergy off)
     const nodeHTML = named.map((n) => {
       const rank = state.skills[n.skill] || 0;
       const unlocked = tierUnlocked(cid, n.tier) && (!n.requires || (state.skills[n.requires] > 0));
       const maxed = rank >= n.maxLevel;
-      const isEdge = shared && (n.tags || []).some((t) => shared.has(t));
-      const cls2 = [n.circular ? "circ" : "", rank > 0 ? "allocated" : "", !unlocked ? "locked" : "", maxed ? "maxed" : "", isEdge ? "edge" : ""].join(" ");
+      // amplifier (buffs the type) vs dealer (deals it) — coloured differently; amp takes the ring
+      const amp = sel && (n.buffs || []).some((t) => sel.has(t));
+      const dealer = sel && (n.deals || []).some((t) => sel.has(t));
+      const edgeCls = amp ? "edge-amp" : (dealer ? "edge-deal" : "");
+      const cls2 = [n.circular ? "circ" : "", rank > 0 ? "allocated" : "", !unlocked ? "locked" : "", maxed ? "maxed" : "", edgeCls].join(" ");
       const badge = rank > 0 || unlocked ? `<span class="st-rank">${rank}/${n.maxLevel}</span>` : `<span class="st-lock">🔒</span>`;
       return `<div class="st-node ${cls2}" style="left:${pct(n.x, cw)};top:${pct(n.y, ch)};width:${pct(bw, cw)};height:${pct(bh, ch)}"
           data-action="st-node" data-skill="${esc(n.skill)}" title="${esc(n.name)}">
@@ -657,7 +665,7 @@
        <span class="st-tiermark ${lvl >= m.level ? "on" : ""}" style="left:${pct(m.x, cw)};top:${pct(m.y, ch)}">${m.level}</span>`
     ).join("");
 
-    const canvas = `<div class="skilltree-canvas ${cls.paneArt ? "has-art" : ""} ${shared ? "synergy" : ""}"
+    const canvas = `<div class="skilltree-canvas ${cls.paneArt ? "has-art" : ""} ${sel ? "synergy" : ""}"
       style="aspect-ratio:${cw}/${ch};background-image:url('assets/${esc(ST.canvas.bg)}');${artVars}">${linksSVG}${nodeHTML}${marksHTML}</div>`;
     // nest the interior inside the game's ornate outer window frame
     const fi = ST.frameInset || { top: 0, right: 0, bottom: 0, left: 0 };
@@ -965,29 +973,28 @@
       ${eff.length ? `<ul class="tip-stats">${eff.map(line).join("")}</ul>` : ""}
       ${synergyHTML(node, cid)}`;
   }
-  // per-skill "why + magnitude" of the shared edge: which shared damage types this skill feeds,
-  // and how the partner mastery amplifies each (its roles + score + resist reduction)
+  // per-skill "why + magnitude": for each focused shared type this skill touches, whether it DEALS
+  // or AMPLIFIES it, and how both masteries stock that type (dealers/amplifiers = the magnitude).
   function synergyHTML(node, cid) {
-    if (!state.synergy) return "";
-    const e = currentEdge(), shared = sharedEdgeTypes(), partner = state.masteries.find((m) => m !== cid);
-    if (!e || !shared || !partner) return "";
-    const hit = (node.tags || []).filter((t) => shared.has(t));
-    if (!hit.length) return "";
-    const pName = ST.classes[partner]?.name || "";
-    const rows = [], seen = new Set();
+    const e = currentEdge(), sel = selectedEdgeTypes(), partner = state.masteries.find((m) => m !== cid);
+    if (!e || !sel || !partner) return "";
+    const deals = new Set(node.deals || []), buffs = new Set(node.buffs || []);
+    const pName = ST.classes[partner]?.name || "", mName = ST.classes[cid]?.name || "";
+    const rows = [];
     for (const d of e.shared) {
-      const keys = d.key === "Elemental" ? ["Elemental", "Fire", "Cold", "Lightning"] : [d.key];
-      if (seen.has(d.key) || !keys.some((k) => hit.includes(k))) continue;
-      seen.add(d.key);
-      const pr = (d.roles[partner] || []).join(", ") || "supporting stats";
-      const rr = (e.rr || []).some((r) => r.by === partner && (r.type === d.key || (d.key === "Elemental" && ["Fire", "Cold", "Lightning", "Elemental"].includes(r.type))));
-      rows.push(`<li><b>${esc(d.type)}</b> <span class="tip-syn-score">×${d.score}</span>
-        <div class="muted">${esc(pName)} amplifies: ${esc(pr)}${rr ? ", resist reduction" : ""}</div></li>`);
+      if (!sel.has(d.type)) continue;
+      const role = buffs.has(d.type) ? `<span class="tip-syn-amp">amplifies</span>` : (deals.has(d.type) ? `<span class="tip-syn-deal">deals</span>` : null);
+      if (!role) continue;
+      const cnt = (p, x) => [x.deal ? `${x.deal} dealer${x.deal > 1 ? "s" : ""}` : "", x.buff ? `${x.buff} amplifier${x.buff > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ") || "—";
+      rows.push(`<li>This skill ${role} <b>${esc(d.type)}</b> <span class="tip-syn-score">${d.score}</span>
+        <div class="muted">${esc(mName)}: ${cnt(cid, d3(d, cid))} · ${esc(pName)}: ${cnt(partner, d3(d, partner))}</div></li>`);
     }
     if (!rows.length) return "";
-    return `<div class="tip-syn"><div class="tip-syn-head">⚡ Shared edge with ${esc(pName)}${e.combo ? ` — ${esc(e.combo)} (${e.score})` : ""}</div>
+    return `<div class="tip-syn"><div class="tip-syn-head">⚡ Shared edge with ${esc(pName)}${e.combo ? ` — ${esc(e.combo)}` : ""}</div>
       <ul class="tip-syn-list">${rows.join("")}</ul></div>`;
   }
+  // pick the per-mastery {deal,buff} counts for a shared-type row (a = first cid, b = second)
+  function d3(d, cid) { const first = state.masteries.slice().sort((x, y) => Number(x) - Number(y))[0]; return cid === first ? d.a : d.b; }
 
   // floating tooltip — on hover (desktop) and tap (mobile). Positioned BESIDE the node
   // (right → left → below) so it never covers the button; it's interactive (pointer-events
@@ -1046,6 +1053,8 @@
   document.addEventListener("pointerdown", (e) => { if (!e.target.closest?.(".st-node") && !e.target.closest?.(".st-tooltip")) hideTip(); });
   // hide when the TREE is panned, but not when scrolling inside the tooltip
   document.addEventListener("scroll", (e) => { if (!e.target.closest?.(".st-tooltip")) hideTip(); }, true);
+  // synergy-edge dropdown
+  document.addEventListener("change", (e) => { const s = e.target.closest?.('[data-role="edge"]'); if (s) { state.edge = s.value; renderSkillTree(); } });
 
   function renderDetail(title, bodyHtml) {
     const root = document.getElementById("detail-overlay-root");
@@ -1107,7 +1116,6 @@
       case "st-preview": state.skill.pickSel = el.dataset.cid; renderSkillTree(); break;
       case "st-choose": if (el.dataset.cid) chooseMastery(el.dataset.cid); break;
       case "st-remove": removeMastery(el.dataset.cid); break;
-      case "st-synergy": state.synergy = !state.synergy; renderSkillTree(); break;
       case "st-node":
         // click/tap = +1 rank, shift/right-click = −1; info lives in the hover/tap tooltip
         if (e.shiftKey) allocSkill(el.dataset.skill, -1);

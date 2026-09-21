@@ -264,20 +264,30 @@ function skillScaling(rec, ranks) {
   return out;
 }
 
-// Damage-type "edge tags" a skill contributes to (flat/%/DoT/RR of a type) — drives the
-// dual-mastery shared-edge highlight. Only type-specific offensive fields count (weapon-damage
-// % is generic and would match everything). `offensiveLife*` = Vitality per the glossary.
-const EDGE_TYPES = ["Physical", "Pierce", "Cold", "Fire", "Poison", "Lightning", "Aether", "Chaos", "Bleeding", "Elemental"];
-function edgeTags(scaling) {
-  const tags = new Set();
+// Damage types present in an offensive field name (Elemental expands to F/C/L; offensiveLife* =
+// Vitality per the glossary). Canonical set = the 10 GD damage types.
+function typesInField(f) {
+  const ts = new Set();
+  for (const t of ["Physical", "Pierce", "Cold", "Fire", "Poison", "Lightning", "Aether", "Chaos", "Bleeding"]) if (f.includes(t)) ts.add(t);
+  if (f.includes("Elemental")) { ts.add("Fire"); ts.add("Cold"); ts.add("Lightning"); }
+  if (/Life/.test(f) && !/(Leech|Steal)/.test(f)) ts.add("Vitality");
+  return [...ts];
+}
+// Split a skill's damage-type involvement into DEALERS (flat/DoT damage of a type) and AMPLIFIERS
+// (% damage modifiers + resist reduction — "buffs to a damage type"). An edge is a type both
+// masteries HAVE (deal or buff), since gear affixes for it then benefit both; dealers and
+// amplifiers are surfaced separately so the player can tell them apart.
+function skillEdge(scaling) {
+  const deals = new Set(), buffs = new Set();
   for (const sc of scaling) {
     const f = sc.field;
     if (!/^offensive/.test(f)) continue;
-    for (const t of EDGE_TYPES) if (f.includes(t)) tags.add(t);
-    if (/Life/.test(f) && !/(Leech|Steal)/.test(f)) tags.add("Vitality");
+    const isBuff = /Modifier$/.test(f) || /ResistanceReduction/.test(f);
+    const isDeal = !isBuff && /(Min|Max)$/.test(f);
+    if (!isBuff && !isDeal) continue;
+    for (const t of typesInField(f)) (isBuff ? buffs : deals).add(t);
   }
-  if (tags.has("Elemental")) { tags.add("Fire"); tags.add("Cold"); tags.add("Lightning"); }
-  return [...tags];
+  return { deals: [...deals], buffs: [...buffs] };
 }
 
 // modifier-prereq resolver: a modifier skill (Class ~ Modifier/Transmuter/SkillSecondary)
@@ -306,25 +316,9 @@ function effectiveSkillRec(path, depth = 0) {
 
 const TIER_LEVELS = progression.skillMasteryTierLevel;   // [1,5,10,15,20,25,32,40,50]
 
-// dual-mastery synergy edges (from the datamine's mastery_edges analysis) — per pair the shared
-// damage types with a score (magnitude) and each mastery's roles ("flat x5", "%dmg x1", DoT),
-// the amplifying resist-reduction, and the top shared support. Keyed by "<a><b>" (a<b).
-const edgesRaw = readJSON(path.join(EXTRACT, "data", "model", "mastery_edges.json")).edges;
-const edges = {};
-for (const e of edgesRaw) {
-  const nameToCid = { [e.a_name]: e.a, [e.b_name]: e.b };
-  edges[e.a + e.b] = {
-    combo: e.combo_name,
-    score: e.synergy_score,
-    support: (e.headline && e.headline.top_shared_support) || [],
-    shared: (e.shared_damage || []).map((s) => ({
-      type: s.type, key: s.key || s.type, score: s.score,
-      roles: { [e.a]: s.a_roles || [], [e.b]: s.b_roles || [] },
-    })),
-    rr: (e.resist_reduction || []).filter((r) => r.matches_shared)
-      .map((r) => ({ by: nameToCid[r.by] || r.by, type: r.type, kinds: r.kinds })),
-  };
-}
+// per-mastery damage-type profile — for each cid: { type: {deal: nSkills, buff: nSkills} } —
+// accumulated during the node build below, then paired into `skilltree.edges`.
+const masteryProfile = {};
 
 const skilltree = {
   canvas: { w: stSrc.canvas.w, h: stSrc.canvas.h, bg: copyIcon(stSrc.canvas.bg) },
@@ -332,7 +326,7 @@ const skilltree = {
   paneArtBox: { x: 0, y: 0, w: 640, h: 605 },
   button: stSrc.button,
   tierLevels: TIER_LEVELS,
-  edges,
+  edges: {},   // filled after the class loop from masteryProfile
   // the game's skill window sits inside an ornate outer frame (skills_classwindowbackgroundimage,
   // 1001×720); the interior 983×605 pane fills its opening. Measured opening insets (fractions):
   frame: copyIcon("ui/skills/skills_classwindowbackgroundimage.png"),
@@ -406,7 +400,13 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
       }
       const ranks = N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1;
       const _scaling = n.masteryBar ? [] : skillScaling(sRec, ranks);
-      const _tags = edgeTags(_scaling);
+      const _edge = skillEdge(_scaling);
+      // accumulate this mastery's damage-type profile (how many skills deal vs buff each type)
+      if (!n.masteryBar) {
+        const prof = masteryProfile[cid] || (masteryProfile[cid] = {});
+        for (const t of _edge.deals) (prof[t] || (prof[t] = { deal: 0, buff: 0 })).deal++;
+        for (const t of _edge.buffs) (prof[t] || (prof[t] = { deal: 0, buff: 0 })).buff++;
+      }
       // classify from the record Class (drives the tooltip's type subtitle)
       const rc = String(sRec.Class || rec.Class || "");
       const kind = /Passive/.test(rc) ? "Passive"
@@ -427,11 +427,33 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
         ultimateLevel: N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1,
         requires,
         desc: sRec.desc || rec.desc || null,
-        tags: _tags.length ? _tags : undefined,
+        deals: _edge.deals.length ? _edge.deals : undefined,
+        buffs: _edge.buffs.length ? _edge.buffs : undefined,
         scaling: _scaling,
       };
     }),
   };
+}
+
+// Pair the per-mastery profiles into shared damage-type edges: a type is an edge when BOTH
+// masteries HAVE it (deal or buff). Each edge keeps per-mastery deal/buff counts (magnitude) and
+// the combo name; keyed by numeric-sorted cid concat ("12", "110") to match the app's pairKey.
+{
+  const cids = Object.keys(skilltree.classes);
+  const dcn = progression.dualClassNames || {};
+  for (let i = 0; i < cids.length; i++) for (let j = i + 1; j < cids.length; j++) {
+    const a = cids[i], b = cids[j];
+    const pa = masteryProfile[a] || {}, pb = masteryProfile[b] || {};
+    const shared = [];
+    for (const t of Object.keys(pa)) {
+      if (!pb[t]) continue;
+      shared.push({ type: t, a: pa[t], b: pb[t], score: pa[t].deal + pa[t].buff + pb[t].deal + pb[t].buff });
+    }
+    if (!shared.length) continue;
+    shared.sort((x, y) => y.score - x.score);
+    const key = [Number(a), Number(b)].sort((x, y) => x - y).join("");
+    skilltree.edges[key] = { combo: dcn[key] || "", score: shared.reduce((s, d) => s + d.score, 0), shared };
+  }
 }
 
 // ── devotion (galaxy image + FULL allocation model) ─────────────────────────
