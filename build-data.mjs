@@ -273,21 +273,31 @@ function typesInField(f) {
   if (/Life/.test(f) && !/(Leech|Steal)/.test(f)) ts.add("Vitality");
   return [...ts];
 }
-// Split a skill's damage-type involvement into DEALERS (flat/DoT damage of a type) and AMPLIFIERS
-// (% damage modifiers + resist reduction — "buffs to a damage type"). An edge is a type both
-// masteries HAVE (deal or buff), since gear affixes for it then benefit both; dealers and
-// amplifiers are surfaced separately so the player can tell them apart.
-function skillEdge(scaling) {
-  const deals = new Set(), buffs = new Set();
+// Split a skill's damage-type involvement into DEALERS (outputs damage of a type) and global
+// AMPLIFIERS (raises that type for the WHOLE build). Crucial distinction: a "+% X Damage" modifier
+// is only GLOBAL on a character-wide buff (Passive/Buff/Toggle-aura); on an active attack or a
+// transmuter/modifier it is LOCAL — it only scales that skill (or its base), so it does NOT
+// amplify the other mastery and counts as the skill dealing that type. Resist reduction is a
+// debuff on the enemy, so it's always global. An edge is a type both masteries HAVE (deal or
+// amplify), since gear affixes for it then benefit both.
+const GLOBAL_KINDS = new Set(["Passive", "Buff", "Toggle"]);
+function skillEdge(scaling, kind) {
+  const isGlobal = GLOBAL_KINDS.has(kind);
+  const deals = new Set(), amps = new Set();
   for (const sc of scaling) {
     const f = sc.field;
     if (!/^offensive/.test(f)) continue;
-    const isBuff = /Modifier$/.test(f) || /ResistanceReduction/.test(f);
-    const isDeal = !isBuff && /(Min|Max)$/.test(f);
-    if (!isBuff && !isDeal) continue;
-    for (const t of typesInField(f)) (isBuff ? buffs : deals).add(t);
+    const isMod = /Modifier$/.test(f);
+    const isRR = /ResistanceReduction/.test(f);
+    const isFlat = !isMod && !isRR && /(Min|Max)$/.test(f);
+    if (!isMod && !isRR && !isFlat) continue;
+    for (const t of typesInField(f)) {
+      if (isRR) amps.add(t);                       // resist reduction = global debuff
+      else if (isMod) (isGlobal ? amps : deals).add(t);  // %damage: global buff → amp; else local → deal
+      else deals.add(t);                           // flat / DoT
+    }
   }
-  return { deals: [...deals], buffs: [...buffs] };
+  return { deals: [...deals], buffs: [...amps] };  // `buffs` kept = global amplifiers
 }
 
 // modifier-prereq resolver: a modifier skill (Class ~ Modifier/Transmuter/SkillSecondary)
@@ -400,14 +410,7 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
       }
       const ranks = N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1;
       const _scaling = n.masteryBar ? [] : skillScaling(sRec, ranks);
-      const _edge = skillEdge(_scaling);
-      // accumulate this mastery's damage-type profile (how many skills deal vs buff each type)
-      if (!n.masteryBar) {
-        const prof = masteryProfile[cid] || (masteryProfile[cid] = {});
-        for (const t of _edge.deals) (prof[t] || (prof[t] = { deal: 0, buff: 0 })).deal++;
-        for (const t of _edge.buffs) (prof[t] || (prof[t] = { deal: 0, buff: 0 })).buff++;
-      }
-      // classify from the record Class (drives the tooltip's type subtitle)
+      // classify from the record Class (drives the tooltip subtitle AND local-vs-global edge scope)
       const rc = String(sRec.Class || rec.Class || "");
       const kind = /Passive/.test(rc) ? "Passive"
         : /Transmuter/.test(rc) ? "Transmuter"
@@ -416,6 +419,13 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
         : /(Buff|Aura)/.test(rc) ? "Buff"
         : /(Attack|WeaponPool|WPAttack)/.test(rc) ? "Active"
         : "";
+      const _edge = skillEdge(_scaling, kind);
+      // accumulate this mastery's damage-type profile (how many skills deal vs amplify each type)
+      if (!n.masteryBar) {
+        const prof = masteryProfile[cid] || (masteryProfile[cid] = {});
+        for (const t of _edge.deals) (prof[t] || (prof[t] = { deal: 0, buff: 0 })).deal++;
+        for (const t of _edge.buffs) (prof[t] || (prof[t] = { deal: 0, buff: 0 })).buff++;
+      }
       return {
         skill: n.skill,
         name: n.name || sRec.name || rec.name || null,
