@@ -61,7 +61,17 @@
     ovl: null,                // item selector
     skill: null,              // { cid } skill-tree overlay
     devo: null,               // { z, sel } devotion overlay
+    synergy: false,           // highlight shared damage-type edge between the two masteries
   };
+
+  // damage types both selected masteries invest in — the shared "edge" (null unless 2 masteries)
+  function sharedEdgeTypes() {
+    if (state.masteries.length !== 2) return null;
+    const u = (cid) => { const s = new Set(); for (const n of ST.classes[cid]?.nodes || []) for (const t of (n.tags || [])) s.add(t); return s; };
+    const a = u(state.masteries[0]), b = u(state.masteries[1]);
+    const shared = new Set([...a].filter((t) => b.has(t)));
+    return shared.size ? shared : null;
+  }
   Object.assign(state, load());
   for (const s of DATA.slots || []) if (!(s.id in state.build)) state.build[s.id] = null;
   // NOTE: legalize runs at the very bottom, once all const helpers are initialized.
@@ -494,6 +504,10 @@
     }
     const spAvail = skillPointsAvailable(), spUsed = skillPointsUsed();
     slots.push(`<span class="st-points ${spUsed > spAvail ? "over" : ""}">Skill Points <b>${spUsed}</b> / ${spAvail}</span>`);
+    // synergy toggle: only when two masteries share a damage-type edge
+    const shared = sharedEdgeTypes();
+    if (shared) slots.push(`<button class="st-synergy ${state.synergy ? "on" : ""}" data-action="st-synergy"
+      title="Highlight skills whose damage type both masteries share: ${esc([...shared].join(", "))}">⚡ Synergy</button>`);
     return slots.join("");
   }
   function renderSkillTree() {
@@ -608,11 +622,13 @@
       ? `<svg class="st-links" viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" aria-hidden="true">${links}</svg>`
       : "";
 
+    const shared = state.synergy ? sharedEdgeTypes() : null;
     const nodeHTML = named.map((n) => {
       const rank = state.skills[n.skill] || 0;
       const unlocked = tierUnlocked(cid, n.tier) && (!n.requires || (state.skills[n.requires] > 0));
       const maxed = rank >= n.maxLevel;
-      const cls2 = [n.circular ? "circ" : "", rank > 0 ? "allocated" : "", !unlocked ? "locked" : "", maxed ? "maxed" : ""].join(" ");
+      const isEdge = shared && (n.tags || []).some((t) => shared.has(t));
+      const cls2 = [n.circular ? "circ" : "", rank > 0 ? "allocated" : "", !unlocked ? "locked" : "", maxed ? "maxed" : "", isEdge ? "edge" : ""].join(" ");
       const badge = rank > 0 || unlocked ? `<span class="st-rank">${rank}/${n.maxLevel}</span>` : `<span class="st-lock">🔒</span>`;
       return `<div class="st-node ${cls2}" style="left:${pct(n.x, cw)};top:${pct(n.y, ch)};width:${pct(bw, cw)};height:${pct(bh, ch)}"
           data-action="st-node" data-skill="${esc(n.skill)}" title="${esc(n.name)}">
@@ -635,7 +651,7 @@
        <span class="st-tiermark ${lvl >= m.level ? "on" : ""}" style="left:${pct(m.x, cw)};top:${pct(m.y, ch)}">${m.level}</span>`
     ).join("");
 
-    const canvas = `<div class="skilltree-canvas ${cls.paneArt ? "has-art" : ""}"
+    const canvas = `<div class="skilltree-canvas ${cls.paneArt ? "has-art" : ""} ${shared ? "synergy" : ""}"
       style="aspect-ratio:${cw}/${ch};background-image:url('assets/${esc(ST.canvas.bg)}');${artVars}">${linksSVG}${nodeHTML}${marksHTML}</div>`;
     // nest the interior inside the game's ornate outer window frame
     const fi = ST.frameInset || { top: 0, right: 0, bottom: 0, left: 0 };
@@ -1061,6 +1077,7 @@
       case "st-preview": state.skill.pickSel = el.dataset.cid; renderSkillTree(); break;
       case "st-choose": if (el.dataset.cid) chooseMastery(el.dataset.cid); break;
       case "st-remove": removeMastery(el.dataset.cid); break;
+      case "st-synergy": state.synergy = !state.synergy; renderSkillTree(); break;
       case "st-node":
         // click/tap = +1 rank, shift/right-click = −1; info lives in the hover/tap tooltip
         if (e.shiftKey) allocSkill(el.dataset.skill, -1);

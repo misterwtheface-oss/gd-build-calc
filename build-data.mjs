@@ -264,6 +264,22 @@ function skillScaling(rec, ranks) {
   return out;
 }
 
+// Damage-type "edge tags" a skill contributes to (flat/%/DoT/RR of a type) — drives the
+// dual-mastery shared-edge highlight. Only type-specific offensive fields count (weapon-damage
+// % is generic and would match everything). `offensiveLife*` = Vitality per the glossary.
+const EDGE_TYPES = ["Physical", "Pierce", "Cold", "Fire", "Poison", "Lightning", "Aether", "Chaos", "Bleeding", "Elemental"];
+function edgeTags(scaling) {
+  const tags = new Set();
+  for (const sc of scaling) {
+    const f = sc.field;
+    if (!/^offensive/.test(f)) continue;
+    for (const t of EDGE_TYPES) if (f.includes(t)) tags.add(t);
+    if (/Life/.test(f) && !/(Leech|Steal)/.test(f)) tags.add("Vitality");
+  }
+  if (tags.has("Elemental")) { tags.add("Fire"); tags.add("Cold"); tags.add("Lightning"); }
+  return [...tags];
+}
+
 // modifier-prereq resolver: a modifier skill (Class ~ Modifier/Transmuter/SkillSecondary)
 // requires its base skill. Base = the single non-modifier node sharing the family stem
 // (record name minus trailing digits/letters and any _mod/_petmod suffix); when the stem
@@ -367,6 +383,8 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
         if (base) { requires = base.n.skill; stModRes++; }
       }
       const ranks = N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1;
+      const _scaling = n.masteryBar ? [] : skillScaling(sRec, ranks);
+      const _tags = edgeTags(_scaling);
       // classify from the record Class (drives the tooltip's type subtitle)
       const rc = String(sRec.Class || rec.Class || "");
       const kind = /Passive/.test(rc) ? "Passive"
@@ -387,7 +405,8 @@ for (const [cid, rawNodes] of Object.entries(stSrc.classes)) {
         ultimateLevel: N(sRec.skillUltimateLevel) || N(sRec.skillMaxLevel) || 1,
         requires,
         desc: sRec.desc || rec.desc || null,
-        scaling: n.masteryBar ? [] : skillScaling(sRec, ranks),
+        tags: _tags.length ? _tags : undefined,
+        scaling: _scaling,
       };
     }),
   };

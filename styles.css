@@ -479,6 +479,15 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 .st-node.locked:hover { box-shadow: 0 0 0 2px var(--neg); }
 .st-node.allocated { box-shadow: 0 0 0 2px var(--gold), 0 0 8px rgba(216,178,74,.6); z-index: 3; }
 .st-node.maxed { box-shadow: 0 0 0 2px #6fce6f, 0 0 8px rgba(111,206,111,.55); }
+
+/* dual-mastery shared-edge highlight: dim skills that don't share a damage type with the other
+   mastery, ring the ones that do (teal — distinct from gold=allocated / green=maxed) */
+.st-synergy { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+  padding: .3rem .6rem; border-radius: 5px; font-size: .78rem; white-space: nowrap; }
+.st-synergy:hover { border-color: var(--border-hi); color: var(--text); }
+.st-synergy.on { background: rgba(38,120,130,.5); color: #d7f4f7; border-color: #4fd6e0; }
+.skilltree-canvas.synergy .st-node:not(.edge) { opacity: .26; filter: grayscale(.55); }
+.skilltree-canvas.synergy .st-node.edge { box-shadow: 0 0 0 2px #4fd6e0, 0 0 12px rgba(79,214,224,.7); z-index: 3; }
 .st-rank { position: absolute; bottom: -6px; right: -6px; background: var(--surface2); border: 1px solid var(--border-hi);
   color: var(--gold); font-size: .58rem; font-weight: 700; line-height: 1; padding: 1px 3px; border-radius: 6px; pointer-events: none; }
 .st-node.maxed .st-rank { border-color: #6fce6f; color: #6fce6f; }
