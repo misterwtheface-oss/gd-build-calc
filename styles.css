@@ -456,6 +456,13 @@ table.player-xref { border-collapse: collapse; font-size: .9rem; }
 .tip-stats b { color: #e7f4d4; font-weight: 700; }
 .tip-mech b { color: #f3e6c4; }
 .tip-next { color: var(--text-dim); font-weight: 400; }
+/* synergy "why + magnitude" block in the tooltip */
+.tip-syn { margin-top: .5rem; padding-top: .45rem; border-top: 1px solid rgba(79,214,224,.35); }
+.tip-syn-head { font-size: .76rem; font-weight: 700; color: #7fe3ec; margin-bottom: .2rem; }
+.tip-syn-list { list-style: none; margin: 0; padding: 0; }
+.tip-syn-list li { padding: 2px 0; color: #d7f4f7; }
+.tip-syn-score { display: inline-block; font-size: .68rem; font-weight: 700; color: #0a1416; background: #4fd6e0;
+  border-radius: 999px; padding: 0 .4rem; vertical-align: middle; }
 /* per-mastery backdrop: the game's skillallocation mastery art, drawn crisp at its native box
    (left-anchored, ~640/983 wide, full height) exactly as the in-game skill window composites it.
    The art carries its own right-side alpha fade, so no opacity/cover hacks — it blends over the

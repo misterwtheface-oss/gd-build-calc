@@ -305,12 +305,34 @@ function effectiveSkillRec(path, depth = 0) {
 }
 
 const TIER_LEVELS = progression.skillMasteryTierLevel;   // [1,5,10,15,20,25,32,40,50]
+
+// dual-mastery synergy edges (from the datamine's mastery_edges analysis) — per pair the shared
+// damage types with a score (magnitude) and each mastery's roles ("flat x5", "%dmg x1", DoT),
+// the amplifying resist-reduction, and the top shared support. Keyed by "<a><b>" (a<b).
+const edgesRaw = readJSON(path.join(EXTRACT, "data", "model", "mastery_edges.json")).edges;
+const edges = {};
+for (const e of edgesRaw) {
+  const nameToCid = { [e.a_name]: e.a, [e.b_name]: e.b };
+  edges[e.a + e.b] = {
+    combo: e.combo_name,
+    score: e.synergy_score,
+    support: (e.headline && e.headline.top_shared_support) || [],
+    shared: (e.shared_damage || []).map((s) => ({
+      type: s.type, key: s.key || s.type, score: s.score,
+      roles: { [e.a]: s.a_roles || [], [e.b]: s.b_roles || [] },
+    })),
+    rr: (e.resist_reduction || []).filter((r) => r.matches_shared)
+      .map((r) => ({ by: nameToCid[r.by] || r.by, type: r.type, kinds: r.kinds })),
+  };
+}
+
 const skilltree = {
   canvas: { w: stSrc.canvas.w, h: stSrc.canvas.h, bg: copyIcon(stSrc.canvas.bg) },
   // per-class mastery art (paneArt) is drawn at (0,0), native 640×605, over the 983×605 pane
   paneArtBox: { x: 0, y: 0, w: 640, h: 605 },
   button: stSrc.button,
   tierLevels: TIER_LEVELS,
+  edges,
   // the game's skill window sits inside an ornate outer frame (skills_classwindowbackgroundimage,
   // 1001×720); the interior 983×605 pane fills its opening. Measured opening insets (fractions):
   frame: copyIcon("ui/skills/skills_classwindowbackgroundimage.png"),

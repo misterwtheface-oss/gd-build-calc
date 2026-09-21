@@ -64,13 +64,19 @@
     synergy: false,           // highlight shared damage-type edge between the two masteries
   };
 
-  // damage types both selected masteries invest in — the shared "edge" (null unless 2 masteries)
-  function sharedEdgeTypes() {
+  // the datamine's synergy edge for the two selected masteries (null unless 2 selected + shared)
+  function currentEdge() {
     if (state.masteries.length !== 2) return null;
-    const u = (cid) => { const s = new Set(); for (const n of ST.classes[cid]?.nodes || []) for (const t of (n.tags || [])) s.add(t); return s; };
-    const a = u(state.masteries[0]), b = u(state.masteries[1]);
-    const shared = new Set([...a].filter((t) => b.has(t)));
-    return shared.size ? shared : null;
+    const key = state.masteries.map((c) => String(Number(c)).padStart(2, "0")).sort().join("");
+    const e = (ST.edges || {})[key];
+    return e && e.shared && e.shared.length ? e : null;
+  }
+  // damage-type keys of the shared edge (Elemental expands to F/C/L so per-type skills still match)
+  function sharedEdgeTypes() {
+    const e = currentEdge(); if (!e) return null;
+    const s = new Set();
+    for (const d of e.shared) { s.add(d.key); if (d.key === "Elemental") { s.add("Fire"); s.add("Cold"); s.add("Lightning"); } }
+    return s.size ? s : null;
   }
   Object.assign(state, load());
   for (const s of DATA.slots || []) if (!(s.id in state.build)) state.build[s.id] = null;
@@ -504,10 +510,10 @@
     }
     const spAvail = skillPointsAvailable(), spUsed = skillPointsUsed();
     slots.push(`<span class="st-points ${spUsed > spAvail ? "over" : ""}">Skill Points <b>${spUsed}</b> / ${spAvail}</span>`);
-    // synergy toggle: only when two masteries share a damage-type edge
-    const shared = sharedEdgeTypes();
-    if (shared) slots.push(`<button class="st-synergy ${state.synergy ? "on" : ""}" data-action="st-synergy"
-      title="Highlight skills whose damage type both masteries share: ${esc([...shared].join(", "))}">⚡ Synergy</button>`);
+    // synergy toggle: only when two masteries share a damage-type edge; shows the combo + score
+    const e = currentEdge();
+    if (e) slots.push(`<button class="st-synergy ${state.synergy ? "on" : ""}" data-action="st-synergy"
+      title="Highlight the shared damage-type edge — ${esc(e.shared.map((d) => `${d.type} ×${d.score}`).join(", "))}">⚡ Synergy${e.combo ? ` · ${esc(e.combo)} ${e.score}` : ""}</button>`);
     return slots.join("");
   }
   function renderSkillTree() {
@@ -956,7 +962,31 @@
       ${node.exclusive ? `<div class="tip-note">Exclusive Skill — only one may be active at a time</div>` : ""}
       ${node.desc ? `<p class="tip-desc">${fmtDesc(node.desc)}</p>` : ""}
       ${mech.length ? `<ul class="tip-stats tip-mech">${mech.map(line).join("")}</ul>` : ""}
-      ${eff.length ? `<ul class="tip-stats">${eff.map(line).join("")}</ul>` : ""}`;
+      ${eff.length ? `<ul class="tip-stats">${eff.map(line).join("")}</ul>` : ""}
+      ${synergyHTML(node, cid)}`;
+  }
+  // per-skill "why + magnitude" of the shared edge: which shared damage types this skill feeds,
+  // and how the partner mastery amplifies each (its roles + score + resist reduction)
+  function synergyHTML(node, cid) {
+    if (!state.synergy) return "";
+    const e = currentEdge(), shared = sharedEdgeTypes(), partner = state.masteries.find((m) => m !== cid);
+    if (!e || !shared || !partner) return "";
+    const hit = (node.tags || []).filter((t) => shared.has(t));
+    if (!hit.length) return "";
+    const pName = ST.classes[partner]?.name || "";
+    const rows = [], seen = new Set();
+    for (const d of e.shared) {
+      const keys = d.key === "Elemental" ? ["Elemental", "Fire", "Cold", "Lightning"] : [d.key];
+      if (seen.has(d.key) || !keys.some((k) => hit.includes(k))) continue;
+      seen.add(d.key);
+      const pr = (d.roles[partner] || []).join(", ") || "supporting stats";
+      const rr = (e.rr || []).some((r) => r.by === partner && (r.type === d.key || (d.key === "Elemental" && ["Fire", "Cold", "Lightning", "Elemental"].includes(r.type))));
+      rows.push(`<li><b>${esc(d.type)}</b> <span class="tip-syn-score">×${d.score}</span>
+        <div class="muted">${esc(pName)} amplifies: ${esc(pr)}${rr ? ", resist reduction" : ""}</div></li>`);
+    }
+    if (!rows.length) return "";
+    return `<div class="tip-syn"><div class="tip-syn-head">⚡ Shared edge with ${esc(pName)}${e.combo ? ` — ${esc(e.combo)} (${e.score})` : ""}</div>
+      <ul class="tip-syn-list">${rows.join("")}</ul></div>`;
   }
 
   // floating tooltip — on hover (desktop) and tap (mobile). Positioned BESIDE the node
